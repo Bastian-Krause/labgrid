@@ -177,9 +177,14 @@ def exporter(tmpdir, crossbar):
     reader = threading.Thread(target=keep_reading, name='exporter-reader', args=(spawn,), daemon=True)
     reader.start()
     yield spawn
+
+    # let coverage write its data:
+    # https://coverage.readthedocs.io/en/latest/subprocess.html#process-termination
     print("stopping exporter")
-    spawn.close(force=True)
-    assert not spawn.isalive()
+    spawn.kill(SIGTERM)
+    spawn.expect(pexpect.EOF)
+    spawn.wait()
+
     reader.join()
 
 def pytest_addoption(parser):
