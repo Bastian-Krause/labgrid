@@ -2801,6 +2801,31 @@ Implements:
 Arguments:
   - None
 
+RawNetworkInterfaceDriver
+~~~~~~~~~~~~~~~~~~~~~~~~~
+This driver allows "raw" control of a network interface (such as Ethernet or
+WiFi).
+
+The labgrid-raw-interface helper (``helpers/labgrid-raw-interface``) needs to
+be installed in the PATH and usable via sudo without password.
+
+It supports:
+- recording traffic
+- replaying traffic
+- basic statistic collection
+
+Binds to:
+  iface:
+    - `NetworkInterface`_
+    - `USBNetworkInterface`_
+    - `RemoteNetworkInterface`_
+
+Implements:
+  - None yet
+
+Arguments:
+  - None
+
 .. _conf-strategies:
 
 Strategies
