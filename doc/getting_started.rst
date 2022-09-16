@@ -25,27 +25,12 @@ In many cases, the easiest way is to install labgrid into a virtualenv:
     $ source labgrid-venv/bin/activate
     labgrid-venv $ pip install --upgrade pip setuptools wheel
 
-Start installing labgrid by cloning the repository and installing the
-requirements from the `requirements.txt` file:
+Start by cloning the repository and installing labgrid:
 
 .. code-block:: bash
 
     labgrid-venv $ git clone https://github.com/labgrid-project/labgrid
-    labgrid-venv $ cd labgrid && pip install -r requirements.txt
-    labgrid-venv $ python3 setup.py install
-
-.. note::
-   Previous documentation recommended the installation as via pip (`pip3 install
-   labgrid`).
-   This lead to broken installations due to unexpected incompatibilities with
-   new releases of the dependencies.
-   Consequently we now recommend using pinned versions from the
-   `requirements.txt` file for most use cases.
-
-   labgrid also supports the installation as a library via pip, but we only
-   test against library versions specified in the requirements.txt file.
-   Thus when installing directly from pip you have to test compatibility
-   yourself.
+    labgrid-venv $ cd labgrid && pip install .
 
 .. note::
    If you are installing via pip and intend to use Serial over IP (RFC2217),
@@ -78,33 +63,32 @@ successful so far, proceed to the next section:
 Optional Requirements
 ~~~~~~~~~~~~~~~~~~~~~
 labgrid provides optional features which are not included in the default
-`requirements.txt`. The tested library version for each feature is included in a
-seperate requirements file. An example for snmp support is:
+installation. An example for snmp support is:
 
 .. code-block:: bash
 
-    labgrid-venv $ pip install -r snmp-requirements.txt
+    labgrid-venv $ pip install .[snmp]
 
 Onewire
 +++++++
 Onewire support requires the `libow` library with headers, installable on debian
-via the `libow-dev` package. Use the `onewire-requirements.txt` file to install
-the correct onewire library version in addition to the normal installation.
+via the `libow-dev` package. Use the `onewire` extra to install the correct
+onewire library version in addition to the normal installation.
 
 SNMP
 ++++
 SNMP support requires to additional packages, `pysnmp` and `pysnmpmibs`. They
-are included in the `snmp-requirements.txt` file.
+are included in the `snmp` extra.
 
 Modbus
 ++++++
 Modbus support requires an additional package `pyModbusTCP`. It is included in
-the `modbus-requirements.txt` file.
+the `modbus` extra.
 
 ModbusRTU
 +++++++++
 Modbus support requires an additional package `minimalmodbus`. It is included in
-the `modbusrtu-requirements.txt` file.
+the `modbusrtu` extra.
 
 Running Your First Test
 -----------------------
@@ -172,17 +156,15 @@ Coordinator
 ~~~~~~~~~~~
 
 To start the coordinator, we will download the labgrid repository, create an
-extra virtualenv and install the dependencies via the requirements file.
+extra virtualenv and install the dependencies via the crossbar `extra`.
 
 .. code-block:: bash
 
     $ sudo apt install libsnappy-dev
     $ virtualenv -p python3 crossbar-venv
     $ source crossbar-venv/bin/activate
-    crossbar-venv $ pip install --upgrade pip setuptools wheel
     crossbar-venv $ git clone https://github.com/labgrid-project/labgrid
-    crossbar-venv $ cd labgrid && pip install -r crossbar-requirements.txt
-    crossbar-venv $ python setup.py install
+    crossbar-venv $ cd labgrid && pip install .[crossbar]
 
 All necessary dependencies should be installed now, we can start the coordinator
 by running ``crossbar start`` inside of the repository.

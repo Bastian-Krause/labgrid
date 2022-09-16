@@ -90,8 +90,7 @@ Install labgrid into the virtualenv:
 
 .. code-block:: bash
 
-   venv $ pip install -r requirements.txt
-   venv $ python setup.py install
+   venv $ pip install .
 
 Tests can now run via:
 
