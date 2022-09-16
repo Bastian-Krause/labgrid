@@ -41,7 +41,7 @@ ENV CROSSBAR_DIR=/opt/crossbar
 
 RUN set -e ;\
     cd /opt/labgrid ;\
-    SETUPTOOLS_SCM_PRETEND_VERSION="$VERSION" pip3 install --no-cache-dir .[crossbar]
+    SETUPTOOLS_SCM_PRETEND_VERSION="$VERSION" pip3 install --no-cache-dir ".[crossbar]"
 
 VOLUME /opt/crossbar
 
