@@ -692,7 +692,7 @@ Run Tests
 
 .. code-block:: bash
 
-    $ tox -r
+    $ VIRTUALENV_PIP=22.2.2 tox -r
 
 Developer's Certificate of Origin
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
