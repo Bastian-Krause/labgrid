@@ -15,7 +15,7 @@ jobs:
       run: |
         ./dockerfiles/build.sh
         cd dockerfiles/staging
-        docker-compose up --exit-code-from client client
+        docker-compose up --exit-code-from client client || (docker-compose logs --timestamps && false)
         docker-compose down
     - name: Show docker images
       run: |
