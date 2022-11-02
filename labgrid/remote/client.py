@@ -37,6 +37,9 @@ from ..driver import Mode
 txaio.config.loop = asyncio.get_event_loop()  # pylint: disable=no-member
 
 
+raise Exception("ah")
+
+
 class Error(Exception):
     pass
 

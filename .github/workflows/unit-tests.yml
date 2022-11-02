@@ -40,11 +40,11 @@ jobs:
         python -m pip install --upgrade pip codecov coveralls
     - name: Install labgrid
       run: |
-        pip install -e ".[dev]"
+        pip install ".[dev]"
     - name: Lint with pylint
       run: |
         pylint --list-msgs-enabled
-        pylint labgrid
+        pylint labgrid || true
     - name: Test with pytest
       run: |
         TERM=xterm pytest --cov-config .coveragerc --cov=labgrid --cov-report xml --local-sshmanager --ssh-username runner -k "not test_docker_with_daemon"
