@@ -47,7 +47,9 @@ jobs:
         pylint labgrid
     - name: Test with pytest
       run: |
-        TERM=xterm pytest --cov-config .coveragerc --cov=labgrid --local-sshmanager --ssh-username runner -k "not test_docker_with_daemon"
+        TERM=xterm coverage run --parallel-mode --source=labgrid -m pytest --local-sshmanager --ssh-username runner -k "not test_docker_with_daemon"
+        coverage combine -a
+        coverage report
     - name: Build documentation
       run: |
         make -C doc clean

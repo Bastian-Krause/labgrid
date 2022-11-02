@@ -106,21 +106,21 @@ def crossbar_config(tmpdir, pytestconfig):
     pytestconfig.rootdir.join(crossbar_config).copy(tmpdir.mkdir('.crossbar'))
 
     # crossbar runs labgrid's coordinator component as a guest, record its coverage
-    if pytestconfig.pluginmanager.get_plugin('pytest_cov'):
-        with open(tmpdir.join(crossbar_config), 'r+') as stream:
-            conf = yaml.safe_load(stream)
+    with open(tmpdir.join(crossbar_config), 'r+') as stream:
+        conf = yaml.safe_load(stream)
 
-            for worker in conf['workers']:
-                if worker['type'] == 'guest':
-                    worker['executable'] = 'coverage'
-                    worker['arguments'].insert(0, 'run')
-                    worker['arguments'].insert(1, '--parallel-mode')
-                    # pytest-cov combines coverage files in root dir automatically, so copy it there
-                    coverage_data = pytestconfig.rootdir.join('.coverage')
-                    worker['arguments'].insert(2, f'--data-file={coverage_data}')
+        for worker in conf['workers']:
+            if worker['type'] == 'guest':
+                worker['executable'] = 'coverage'
+                worker['arguments'].insert(0, 'run')
+                worker['arguments'].insert(1, '--parallel-mode')
+                # pytest-cov combines coverage files in root dir automatically, so copy it there
+                coverage_data = pytestconfig.rootdir.join('.coverage')
+                worker['arguments'].insert(2, f'--data-file={coverage_data}')
+                worker['arguments'].insert(3, '--source=labgrid')
 
-            stream.seek(0)
-            yaml.safe_dump(conf, stream)
+        stream.seek(0)
+        yaml.safe_dump(conf, stream)
 
 @pytest.fixture(scope='function')
 def crossbar(tmpdir, crossbar_config):
