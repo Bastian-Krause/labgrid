@@ -175,7 +175,7 @@ testpaths = [
     "tests",
     "labgrid",
 ]
-addopts = "-p no:labgrid"
+addopts = "-p no:labgrid -p no:pytest_ethereum"
 
 [tool.pylint.imports]
 ignored-modules = ["gi"]
