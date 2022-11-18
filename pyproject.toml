@@ -33,6 +33,7 @@ dependencies = [
     "attrs==22.1.0",
     "autobahn==22.7.1",
     "jinja2==2.11.3",
+    "markupsafe==1.1.1",
     "packaging==21.3",
     "pexpect==4.8.0",
     "pyserial @ git+https://github.com/labgrid-project/pyserial.git@v3.5.0.1",
