@@ -153,18 +153,27 @@ Coordinator
 ~~~~~~~~~~~
 
 To start the coordinator, we will download the labgrid repository, create an
-extra virtualenv and install the dependencies via the crossbar `extra`.
+extra virtualenv and install the dependencies:
 
 .. code-block:: bash
 
     $ sudo apt install libsnappy-dev
+    $ git clone https://github.com/labgrid-project/labgrid
+    $ cd labgrid
     $ virtualenv -p python3 crossbar-venv
-    $ source crossbar-venv/bin/activate
-    crossbar-venv $ git clone https://github.com/labgrid-project/labgrid
-    crossbar-venv $ cd labgrid && pip install ".[crossbar]"
+    $ crossbar-venv/bin/pip install --upgrade pip
+    $ crossbar-venv/bin/pip install -r crossbar-requirements.txt
+    $ virtualenv -p python3 labgrid-venv
+    $ source labgrid-venv/bin/activate
+    labgrid-venv $ pip install --upgrade pip
+    labgrid-venv $ pip install .
 
-All necessary dependencies should be installed now, we can start the coordinator
-by running ``crossbar start --config config-anonymous.yaml`` inside the repository.
+All necessary dependencies should be installed now.
+Now we can start the coordinator inside the repository.
+
+.. code-block:: bash
+
+    labgrid-venv $ crossbar-venv/bin/crossbar start --config config-anonymous.yaml
 
 .. note:: This is possible because the labgrid repository contains the crossbar
           configuration the coordinator in the ``.crossbar`` folder.
