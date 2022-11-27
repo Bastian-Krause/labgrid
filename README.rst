@@ -2,8 +2,8 @@
    :alt: labgrid logo
    :align: center
 
-Welcome to labgrid
-==================
+Welcome to labgrid!
+===================
 
 |license| |unit-tests| |docker-build| |coverage-status| |docs-status| |chat|
 
