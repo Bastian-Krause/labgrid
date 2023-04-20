@@ -1,0 +1,94 @@
+#!/usr/bin/python3
+#
+# Wrapper script to be deployed on machines whose network interfaces should be
+# controllable via the RawNetworkInterfaceDriver. A /etc/labgrid/labgrid.ini
+# can deny access to network interfaces. See below.
+#
+# This is intended to be used via sudo. For example, add via visudo:
+# %developers ALL = NOPASSWD: /usr/local/sbin/labgrid-raw-interface
+
+import argparse
+import os
+import sys
+import configparser
+import warnings
+
+
+def main(program, ifname, capfile, count):
+    if not ifname:
+        raise ValueError("Empty interface name.")
+    if any((c == "/" or c.isspace()) for c in ifname):
+        raise ValueError(f"Interface name '{ifname}' contains invalid characters.")
+    if len(ifname) > 16:
+        raise ValueError(f"Interface name '{ifname}' is too long.")
+
+    config = configparser.ConfigParser()
+
+    if not config.read("/etc/labgrid/labgrid.ini"):
+        warnings.warn("No configuration file (/etc/labgrid/labgrid.ini), continuing without denylist!")
+
+    if "raw-interface" not in config.sections():
+        warnings.warn("No raw-interface section, continuing without denylist!")
+    else:
+        denylist = config["raw-interface"].get("denylist")
+        if not denylist:
+            warnings.warn("No denylist in raw-interface section, continuing without denylist!")
+        else:
+            if ifname in denylist.split(" "):
+                raise ValueError(f"Interface name '{ifname}' is denied in denylist.")
+
+    programs = ["tcpreplay", "tcpdump"]
+    if program not in programs:
+        raise ValueError(f"Invalid program {program} called with wrapper, valid programs are: {programs}")
+
+    args = [
+        program,
+    ]
+
+    if program == "tcpreplay":
+        args.append("-i")
+        args.append(ifname)
+        args.append(capfile)
+
+    if program == "tcpdump":
+        user = os.environ.get("SUDO_USER")
+
+        args.append("-n")
+        args.append(f"--interface={ifname}")
+        args.append("-w")
+        args.append(capfile)
+        args.append("-Z")
+        args.append(user)
+
+        if count:
+            args.append("-c")
+            args.append(str(count))
+
+    try:
+        os.execvp(args[0], args)
+    except FileNotFoundError as e:
+        raise RuntimeError(f"Missing {program} binary") from e
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-d',
+        '--debug',
+        action='store_true',
+        default=False,
+        help="enable debug mode"
+    )
+    parser.add_argument('interface', type=str, help='interface name')
+    parser.add_argument('program', type=str, help='program to run, either tcpreplay or tcpdump')
+    parser.add_argument('capfile', type=str, help='path to capture to or replay from')
+    parser.add_argument('count', type=int, default=None, help='amount of frames to capture while recording')
+    args = parser.parse_args()
+    try:
+        main(args.program, args.interface, args.capfile, args.count)
+    except Exception as e:  # pylint: disable=broad-except
+        if args.debug:
+            import traceback
+            traceback.print_exc(file=sys.stderr)
+        print(f"ERROR: {e}", file=sys.stderr)
+        exit(1)
