@@ -235,3 +235,6 @@ commands =
 extras = dev
 commands = pylint -f colorized labgrid
 """
+
+[tool.black]
+line-length = 100
