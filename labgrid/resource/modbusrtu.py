@@ -18,8 +18,7 @@ class ModbusRTU(SerialPort, Resource):
     """
 
     address = attr.ib(default=None, validator=attr.validators.instance_of(int))
-    timeout = attr.ib(default=0.25,
-                      validator=attr.validators.instance_of(float))
+    timeout = attr.ib(default=0.25, validator=attr.validators.instance_of(float))
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()

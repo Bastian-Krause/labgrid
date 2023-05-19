@@ -12,6 +12,6 @@ class YKUSHPowerPort(Resource):
     Args:
         serial (str): serial of the YKUSH device
         index (int): port index"""
+
     serial = attr.ib(validator=attr.validators.instance_of(str))
-    index = attr.ib(validator=attr.validators.instance_of(int),
-                    converter=int)
+    index = attr.ib(validator=attr.validators.instance_of(int), converter=int)

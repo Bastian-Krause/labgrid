@@ -8,6 +8,7 @@ from ..consoleloggingreporter import ConsoleLoggingReporter
 from ..util.helper import processwrapper
 from ..logging import StepFormatter, StepLogger
 
+
 @pytest.hookimpl(tryfirst=True)
 def pytest_cmdline_main(config):
     def set_cli_log_level(level):
@@ -28,11 +29,11 @@ def pytest_cmdline_main(config):
             config.option.log_cli_level = str(level)
 
     verbosity = config.getoption("verbose")
-    if verbosity > 3: # enable with -vvvv
+    if verbosity > 3:  # enable with -vvvv
         set_cli_log_level(logging.DEBUG)
-    elif verbosity > 2: # enable with -vvv
+    elif verbosity > 2:  # enable with -vvv
         set_cli_log_level(logging.CONSOLE)
-    elif verbosity > 1: # enable with -vv
+    elif verbosity > 1:  # enable with -vv
         set_cli_log_level(logging.INFO)
 
 
@@ -41,15 +42,19 @@ def pytest_configure(config):
     StepLogger.start()
     config.add_cleanup(StepLogger.stop)
 
-    logging_plugin = config.pluginmanager.getplugin('logging-plugin')
+    logging_plugin = config.pluginmanager.getplugin("logging-plugin")
     logging_plugin.log_cli_handler.formatter.add_color_level(logging.CONSOLE, "blue")
-    logging_plugin.log_cli_handler.setFormatter(StepFormatter(
-        color=config.option.lg_colored_steps,
-        parent=logging_plugin.log_cli_handler.formatter,
-    ))
-    logging_plugin.log_file_handler.setFormatter(StepFormatter(
-        parent=logging_plugin.log_file_handler.formatter,
-    ))
+    logging_plugin.log_cli_handler.setFormatter(
+        StepFormatter(
+            color=config.option.lg_colored_steps,
+            parent=logging_plugin.log_cli_handler.formatter,
+        )
+    )
+    logging_plugin.log_file_handler.setFormatter(
+        StepFormatter(
+            parent=logging_plugin.log_file_handler.formatter,
+        )
+    )
 
     # Might be the same formatter instance, so get a reference for both before
     # changing either
@@ -59,8 +64,7 @@ def pytest_configure(config):
     logging_plugin.report_handler.setFormatter(StepFormatter(parent=report_formatter))
     logging_plugin.report_handler.setFormatter(StepFormatter(parent=caplog_formatter))
 
-    config.addinivalue_line("markers",
-                            "lg_feature: marker for labgrid feature flags")
+    config.addinivalue_line("markers", "lg_feature: marker for labgrid feature flags")
     lg_log = config.option.lg_log
     if lg_log:
         ConsoleLoggingReporter(lg_log)
@@ -70,21 +74,24 @@ def pytest_configure(config):
 
     if lg_env is None:
         if env_config is not None:
-            warnings.warn(pytest.PytestWarning(
-                "deprecated option --env-config (use --lg-env instead)",
-                __file__))
+            warnings.warn(
+                pytest.PytestWarning(
+                    "deprecated option --env-config (use --lg-env instead)", __file__
+                )
+            )
             lg_env = env_config
 
     env = None
     if lg_env is None:
-        lg_env = os.environ.get('LG_ENV')
+        lg_env = os.environ.get("LG_ENV")
     if lg_env is not None:
         env = Environment(config_file=lg_env)
         if lg_coordinator is not None:
-            env.config.set_option('crossbar_url', lg_coordinator)
+            env.config.set_option("crossbar_url", lg_coordinator)
     config._labgrid_env = env
 
     processwrapper.enable_logging()
+
 
 @pytest.hookimpl()
 def pytest_collection_modifyitems(config, items):

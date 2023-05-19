@@ -25,7 +25,7 @@ class TestEnvironment:
         """
         )
         e = Environment(str(p))
-        assert (isinstance(e, Environment))
+        assert isinstance(e, Environment)
 
     def test_get_target(self, tmpdir):
         p = tmpdir.join("config.yaml")
@@ -40,8 +40,8 @@ class TestEnvironment:
         """
         )
         e = Environment(str(p))
-        assert (e.get_target("test1"))
-        assert (e.get_target("test2"))
+        assert e.get_target("test1")
+        assert e.get_target("test2")
 
     def test_instance_invalid_yaml(self, tmpdir):
         p = tmpdir.join("config.yaml")
@@ -57,16 +57,17 @@ class TestEnvironment:
 
     def test_env_imports_yaml(self, tmpdir):
         import sys
+
         i = tmpdir.join("myimport.py")
         i.write(
-"""
+            """
 class Test:
     pass
 """
         )
         p = tmpdir.join("config.yaml")
         p.write(
-    f"""
+            f"""
 targets:
   main:
     drivers: {{}}
@@ -75,11 +76,12 @@ imports:
 """
         )
         e = Environment(str(p))
-        assert (isinstance(e, Environment))
+        assert isinstance(e, Environment)
         assert "myimport" in sys.modules
         import myimport
+
         t = myimport.Test()
-        assert (isinstance(t, myimport.Test))
+        assert isinstance(t, myimport.Test)
 
     def test_create_named_resources(self, tmpdir):
         p = tmpdir.join("config.yaml")

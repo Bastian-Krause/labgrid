@@ -38,8 +38,7 @@ class USBStorageDriver(Driver):
         },
     }
     image = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
 
     def __attrs_post_init__(self):
@@ -53,7 +52,7 @@ class USBStorageDriver(Driver):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def write_image(self, filename=None, mode=Mode.DD, partition=None, skip=0, seek=0):
         """
         Writes the file specified by filename or if not specified by config image subkey to the
@@ -91,8 +90,8 @@ class USBStorageDriver(Driver):
         target = f"{self.storage.path}{partition}"
 
         if mode == Mode.DD:
-            self.logger.info('Writing %s to %s using dd.', remote_path, target)
-            block_size = '512' if skip or seek else '4M'
+            self.logger.info("Writing %s to %s using dd.", remote_path, target)
+            block_size = "512" if skip or seek else "4M"
             args = [
                 "dd",
                 f"if={remote_path}",
@@ -102,7 +101,7 @@ class USBStorageDriver(Driver):
                 f"bs={block_size}",
                 f"skip={skip}",
                 f"seek={seek}",
-                "conv=fdatasync"
+                "conv=fdatasync",
             ]
         elif mode == Mode.BMAPTOOL:
             if skip or seek:
@@ -124,7 +123,7 @@ class USBStorageDriver(Driver):
                 if not ext:
                     break
 
-            self.logger.info('Writing %s to %s using bmaptool.', remote_path, target)
+            self.logger.info("Writing %s to %s using bmaptool.", remote_path, target)
             args = [
                 "bmaptool",
                 "copy",
@@ -139,17 +138,14 @@ class USBStorageDriver(Driver):
         else:
             raise ValueError
 
-        processwrapper.check_output(
-            self.storage.command_prefix + args,
-            print_on_silent_log=True
-        )
+        processwrapper.check_output(self.storage.command_prefix + args, print_on_silent_log=True)
 
     @Driver.check_active
     @step(result=True)
     def get_size(self):
         args = ["cat", f"/sys/class/block/{self.storage.path[5:]}/size"]
         size = subprocess.check_output(self.storage.command_prefix + args)
-        return int(size)*512
+        return int(size) * 512
 
 
 @target_factory.reg_driver
@@ -157,6 +153,9 @@ class USBStorageDriver(Driver):
 class NetworkUSBStorageDriver(USBStorageDriver):
     def __attrs_post_init__(self):
         import warnings
-        warnings.warn("NetworkUSBStorageDriver is deprecated, use USBStorageDriver instead",
-                      DeprecationWarning)
+
+        warnings.warn(
+            "NetworkUSBStorageDriver is deprecated, use USBStorageDriver instead",
+            DeprecationWarning,
+        )
         super().__attrs_post_init__()

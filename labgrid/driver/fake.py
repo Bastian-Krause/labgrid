@@ -25,13 +25,13 @@ class FakeConsoleDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
     def _read(self, *_, **__):
         if self.rxq:
             return self.rxq.pop()
-        return b''
+        return b""
 
     def _write(self, data, *_):
         self.txq.append(data)
         mo = re.match(rb'^echo "(\w+)""(\w+)"\n$', data)
         if mo:
-            self.rxq.insert(0, b''.join(mo.groups())+b'\n')
+            self.rxq.insert(0, b"".join(mo.groups()) + b"\n")
 
     def open(self):
         pass
@@ -66,6 +66,7 @@ class FakeFileTransferDriver(Driver, FileTransferProtocol):
     @Driver.check_active
     def put(self, *args):
         pass
+
 
 @target_factory.reg_driver
 @attr.s(eq=False)

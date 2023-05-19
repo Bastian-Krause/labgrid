@@ -45,7 +45,9 @@ def test_labgrid_loader():
 def test_default_dumper():
     """Importing labgrid should not modify the default dumpers"""
     data = OrderedDict([])
-    assert "!!python/object/apply:collections.OrderedDict\n- []\n" == yaml.dump(data, Dumper=yaml.Dumper)
+    assert "!!python/object/apply:collections.OrderedDict\n- []\n" == yaml.dump(
+        data, Dumper=yaml.Dumper
+    )
     with pytest.raises(yaml.representer.RepresenterError):
         yaml.dump(data, Dumper=yaml.SafeDumper)
 

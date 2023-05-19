@@ -19,27 +19,35 @@ class ConsoleExpectMixin:
         self._expect = PtxExpect(self)
 
     @Driver.check_active
-    @step(result=True, tag='console')
+    @step(result=True, tag="console")
     def read(self, size=1, timeout=0.0, max_size=None):
         res = self._read(size=size, timeout=timeout, max_size=max_size)
         if max_size:
-            self.logger.debug("Read %i bytes: %s, timeout %.2f, requested size %i, max size %i",
-                              len(res), res, timeout, size, max_size)
+            self.logger.debug(
+                "Read %i bytes: %s, timeout %.2f, requested size %i, max size %i",
+                len(res),
+                res,
+                timeout,
+                size,
+                max_size,
+            )
         else:
-            self.logger.debug("Read %i bytes: %s, timeout %.2f, requested size %i",
-                              len(res), res, timeout, size)
+            self.logger.debug(
+                "Read %i bytes: %s, timeout %.2f, requested size %i", len(res), res, timeout, size
+            )
         return res
 
     @Driver.check_active
-    @step(args=['data'], tag='console')
+    @step(args=["data"], tag="console")
     def write(self, data):
         if self.txdelay:
-            self.logger.debug("Write %i bytes: %s (with %fs txdelay)",
-                              len(data), data, self.txdelay)
+            self.logger.debug(
+                "Write %i bytes: %s (with %fs txdelay)", len(data), data, self.txdelay
+            )
             count = 0
             for i in range(len(data)):
                 time.sleep(self.txdelay)
-                count += self._write(data[i:i+1])
+                count += self._write(data[i : i + 1])
             return count
 
         self.logger.debug("Write %i bytes: %s", len(data), data)
@@ -54,13 +62,13 @@ class ConsoleExpectMixin:
         self._expect.sendcontrol(char)
 
     @Driver.check_active
-    @step(args=['pattern'], result=True)
+    @step(args=["pattern"], result=True)
     def expect(self, pattern, timeout=-1):
         index = self._expect.expect(pattern, timeout=timeout)
         return index, self._expect.before, self._expect.match, self._expect.after
 
     @Driver.check_active
-    @step(args=['quiet_time'])
+    @step(args=["quiet_time"])
     def settle(self, quiet_time, timeout=120.0):
         t = Timeout(timeout)
         while not t.expired:

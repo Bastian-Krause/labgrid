@@ -12,14 +12,13 @@ class ModbusRTUDriver(Driver):
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
-        self._modbus = import_module('minimalmodbus')
+        self._modbus = import_module("minimalmodbus")
         self.instrument = None
 
     def on_activate(self):
         self.instrument = self._modbus.Instrument(
-            self.resource.port,
-            self.resource.address,
-            debug=False)
+            self.resource.port, self.resource.address, debug=False
+        )
         self.instrument.serial.baudrate = self.resource.speed
         self.instrument.serial.timeout = self.resource.timeout
 

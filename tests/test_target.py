@@ -9,13 +9,18 @@ from labgrid.binding import BindingError
 from labgrid.resource import Resource
 from labgrid.driver import Driver
 from labgrid.strategy import Strategy
-from labgrid.exceptions import NoSupplierFoundError, NoDriverFoundError, NoResourceFoundError, NoStrategyFoundError
+from labgrid.exceptions import (
+    NoSupplierFoundError,
+    NoDriverFoundError,
+    NoResourceFoundError,
+    NoStrategyFoundError,
+)
 
 
 # test basic construction
 def test_instanziation():
     t = Target("name")
-    assert (isinstance(t, Target))
+    assert isinstance(t, Target)
 
 
 def test_get_resource(target):
@@ -32,6 +37,7 @@ def test_get_resource(target):
     assert target.get_resource(A) is b
     assert target.get_resource(A, name="aresource") is a
 
+
 def test_get_resource_multiple_no_default(target):
     class A(Resource):
         pass
@@ -40,6 +46,7 @@ def test_get_resource_multiple_no_default(target):
     b = A(target, "default")
     with pytest.raises(NoResourceFoundError) as excinfo:
         target.get_resource(A, name="nosuchresource")
+
 
 def test_get_driver(target):
     class A(Driver):
@@ -73,8 +80,7 @@ def test_getitem(target):
     assert "matching resources with other names" in excinfo.value.msg
     with pytest.raises(NoDriverFoundError) as excinfo:
         target[B, "adriver"]
-    assert re.match(f"no active .*? driver named '{a.name}' found in Target",
-                    excinfo.value.msg)
+    assert re.match(f"no active .*? driver named '{a.name}' found in Target", excinfo.value.msg)
 
     a2 = A(target, None)
     target.activate(a2)
@@ -107,11 +113,15 @@ class DriverWithA(Driver):
 
 
 class DriverWithASet(Driver):
-    bindings = {"res": {ResourceA}, }
+    bindings = {
+        "res": {ResourceA},
+    }
 
 
 class DriverWithAB(Driver):
-    bindings = {"res": {ResourceA, ResourceB}, }
+    bindings = {
+        "res": {ResourceA, ResourceB},
+    }
 
 
 def test_suppliers_a(target):
@@ -188,10 +198,12 @@ def test_suppliers_multi_a(target):
 def test_suppliers_multi_a_explict(target):
     ra1 = ResourceA(target, "resource1")
     ra2 = ResourceA(target, "resource2")
-    target.set_binding_map({
-        "res1": "resource1",
-        "res2": "resource2",
-    })
+    target.set_binding_map(
+        {
+            "res1": "resource1",
+            "res2": "resource2",
+        }
+    )
     d = DriverWithMultiA(target, "driver")
     assert d.res1 is ra1
     assert d.res2 is ra2
@@ -207,10 +219,12 @@ class DriverWithNamedMultiA(Driver):
 def test_suppliers_multi_named_a(target):
     ra1 = ResourceA(target, "resource1")
     ra2 = ResourceA(target, "resource2")
-    target.set_binding_map({
-        "res1": "resource1",
-        "res2": "resource2",
-    })
+    target.set_binding_map(
+        {
+            "res1": "resource1",
+            "res2": "resource2",
+        }
+    )
     d = DriverWithNamedMultiA(target, "driver")
     assert d.res1 is ra1
     assert d.res2 is ra2
@@ -218,12 +232,17 @@ def test_suppliers_multi_named_a(target):
 
 # test optional bindings
 
+
 class DriverWithOptionalA(Driver):
-    bindings = {"res": {ResourceA, None}, }
+    bindings = {
+        "res": {ResourceA, None},
+    }
 
 
 class DriverWithOptionalAB(Driver):
-    bindings = {"res": {ResourceA, ResourceB, None}, }
+    bindings = {
+        "res": {ResourceA, ResourceB, None},
+    }
 
 
 def test_suppliers_optional_a(target):
@@ -264,7 +283,6 @@ def test_suppliers_optional_named_a_missing(target):
     assert d.res is None
 
 
-
 class StrategyA(Strategy):
     bindings = {
         "drv": DriverWithA,
@@ -293,12 +311,15 @@ class DiscoveryResource(Resource):
         super().__attrs_post_init__()
         ResourceA(self.target, "resource")
 
+
 def test_nested(target):
     rd = DiscoveryResource(target, "discovery")
     d = DriverWithAB(target, "driver")
     assert isinstance(d.res, ResourceA)
 
+
 # Test retrieving drivers, resources and protocols by name
+
 
 def test_get_by_string(target):
     class AProtocol(abc.ABC):
@@ -314,18 +335,20 @@ def test_get_by_string(target):
 
     a = A(target, None)
     target.activate(a)
-    assert target.get_driver('A') == a
-    assert target.get_active_driver('A') == a
+    assert target.get_driver("A") == a
+    assert target.get_active_driver("A") == a
 
     c = C(target, None)
-    assert target.get_resource('C') == c
+    assert target.get_resource("C") == c
 
-    assert target['AProtocol'] == a
+    assert target["AProtocol"] == a
 
     with pytest.raises(KeyError):
         target.get_driver("nosuchdriver")
 
+
 # Test priorities
+
 
 def test_get_by_diff_priority(target):
     class AProtocol(abc.ABC):
@@ -346,6 +369,7 @@ def test_get_by_diff_priority(target):
     target.activate(c)
 
     assert target.get_driver(AProtocol) == c
+
 
 def test_get_by_same_priority(target):
     class AProtocol(abc.ABC):
@@ -369,6 +393,7 @@ def test_get_by_same_priority(target):
         target.get_driver(AProtocol)
     assert "multiple drivers matching" in str(e_info.value)
 
+
 def test_get_by_default_priority(target):
     class AProtocol(abc.ABC):
         pass
@@ -390,8 +415,8 @@ def test_get_by_default_priority(target):
         target.get_driver(AProtocol)
     assert "multiple drivers matching" in str(e_info.value)
 
-def test_target_deactivate_by_string(target):
 
+def test_target_deactivate_by_string(target):
     @target_factory.reg_driver
     @attr.s
     class ADea(Driver):
@@ -403,8 +428,8 @@ def test_target_deactivate_by_string(target):
 
     assert a == target.get_driver(ADea, activate=False)
 
-def test_target_activate_by_string(target):
 
+def test_target_activate_by_string(target):
     @target_factory.reg_driver
     @attr.s
     class AActiv(Driver):
@@ -414,6 +439,7 @@ def test_target_activate_by_string(target):
     target.activate("AActiv")
 
     assert a == target.get_active_driver(AActiv)
+
 
 def test_allow_binding_by_different_protocols(target):
     class ADiffProtocol(abc.ABC):
@@ -426,16 +452,14 @@ def test_allow_binding_by_different_protocols(target):
         pass
 
     class DiffStrategy(Strategy):
-        bindings = {
-            "a": ADiffProtocol,
-            "b": BDiffProtocol
-        }
+        bindings = {"a": ADiffProtocol, "b": BDiffProtocol}
 
     d = DiffDriver(target, None)
     s = DiffStrategy(target, None)
 
     assert s.a == d
     assert s.b == d
+
 
 def test_allow_optional_binding_by_different_protocols(target):
     class AOpt1DiffProtocol(abc.ABC):
@@ -448,16 +472,14 @@ def test_allow_optional_binding_by_different_protocols(target):
         pass
 
     class Opt1DiffStrategy(Strategy):
-        bindings = {
-            "a": AOpt1DiffProtocol,
-            "b": {BOpt1DiffProtocol, None}
-        }
+        bindings = {"a": AOpt1DiffProtocol, "b": {BOpt1DiffProtocol, None}}
 
     d = Opt1DiffDriver(target, None)
     s = Opt1DiffStrategy(target, None)
 
     assert s.a == d
     assert s.b == None
+
 
 def test_allow_optional_available_binding_by_different_protocols(target):
     class AOpt2DiffProtocol(abc.ABC):
@@ -470,16 +492,14 @@ def test_allow_optional_available_binding_by_different_protocols(target):
         pass
 
     class Opt2DiffStrategy(Strategy):
-        bindings = {
-            "a": {AOpt2DiffProtocol, None},
-            "b": {BOpt2DiffProtocol, None}
-        }
+        bindings = {"a": {AOpt2DiffProtocol, None}, "b": {BOpt2DiffProtocol, None}}
 
     d = Opt2DiffDriver(target, None)
     s = Opt2DiffStrategy(target, None)
 
     assert s.a == d
     assert s.b == d
+
 
 def test_allow_optional_no_available_binding_by_different_protocols(target):
     class AOpt3DiffProtocol(abc.ABC):
@@ -492,16 +512,14 @@ def test_allow_optional_no_available_binding_by_different_protocols(target):
         pass
 
     class Opt3DiffStrategy(Strategy):
-        bindings = {
-            "a": {AOpt3DiffProtocol, None},
-            "b": {BOpt3DiffProtocol, None}
-        }
+        bindings = {"a": {AOpt3DiffProtocol, None}, "b": {BOpt3DiffProtocol, None}}
 
     d = Opt3DiffDriver(target, None)
     s = Opt3DiffStrategy(target, None)
 
     assert s.a == None
     assert s.b == None
+
 
 def test_allow_optional_no_double_same_protocol_by_different_protocols(target):
     class AOpt4DiffProtocol(abc.ABC):

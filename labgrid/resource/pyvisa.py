@@ -13,5 +13,6 @@ class PyVISADevice(Resource):
         type (str): device resource type following the pyVISA resource syntax, e.g. ASRL, TCPIP...
         url (str): device identifier on selected resource, e.g. <ip> for TCPIP resource
     """
+
     type = attr.ib(validator=attr.validators.instance_of(str))
     url = attr.ib(validator=attr.validators.instance_of(str))

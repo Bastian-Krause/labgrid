@@ -59,6 +59,4 @@ class FlashScriptDriver(Driver):
         cmd = [mf.get_remote_path()] + [a.format(device=self.device, file=mf) for a in args]
 
         self.logger.debug("Running command '%s'", " ".join(cmd))
-        processwrapper.check_output(
-            self.device.command_prefix + cmd, print_on_silent_log=True
-        )
+        processwrapper.check_output(self.device.command_prefix + cmd, print_on_silent_log=True)

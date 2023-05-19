@@ -11,6 +11,7 @@ class SerialPort(Resource):
     Args:
         port (str): port to connect to
         speed (int): speed of the port, defaults to 115200"""
+
     port = attr.ib(default=None)
     speed = attr.ib(default=115200, validator=attr.validators.instance_of(int))
 
@@ -22,7 +23,9 @@ class NetworkInterface(Resource):
 
     Args:
         ifname (str): name of the interface"""
+
     ifname = attr.ib(default=None)
+
 
 @target_factory.reg_resource
 @attr.s
@@ -32,6 +35,7 @@ class EthernetPort(Resource):
     Args:
         switch (str): name of the switch
         interface (str): name of the interface"""
+
     switch = attr.ib(default=None)
     interface = attr.ib(default=None)
 
@@ -43,4 +47,5 @@ class SysfsGPIO(Resource):
 
     Args:
         index (int): index of target gpio line."""
+
     index = attr.ib(default=None, validator=attr.validators.instance_of(int))

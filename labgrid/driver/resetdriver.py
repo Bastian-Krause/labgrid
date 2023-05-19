@@ -7,12 +7,16 @@ from ..protocol import DigitalOutputProtocol, ResetProtocol
 from ..step import step
 from .common import Driver
 
+
 @target_factory.reg_driver
 @attr.s(eq=False)
 class DigitalOutputResetDriver(Driver, ResetProtocol):
     """DigitalOutputResetDriver - Driver using a DigitalOutput to reset the
     target"""
-    bindings = {"output": DigitalOutputProtocol, }
+
+    bindings = {
+        "output": DigitalOutputProtocol,
+    }
     delay = attr.ib(default=1.0, validator=attr.validators.instance_of(float))
 
     def __attrs_post_init__(self):

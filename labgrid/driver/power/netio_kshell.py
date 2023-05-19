@@ -6,6 +6,7 @@ import pexpect
 
 PORT = 1234
 
+
 def power_set(host, port, index, value):
     index = int(index)
     assert 1 <= index <= 4

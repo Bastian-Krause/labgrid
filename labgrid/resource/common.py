@@ -20,6 +20,7 @@ class Resource(BindingMixin):
     - create
     - bind (n times)
     """
+
     avail = attr.ib(default=True, init=False, validator=attr.validators.instance_of(bool))
 
     def __attrs_post_init__(self):
@@ -73,20 +74,21 @@ class NetworkResource(Resource):
     Args:
         host (str): remote host the resource is available on
     """
+
     host = attr.ib(validator=attr.validators.instance_of(str))
 
     @property
     def command_prefix(self):
         host = self.host
 
-        if hasattr(self, 'extra'):
-            if self.extra.get('proxy_required'):
-                host = self.extra.get('proxy')
+        if hasattr(self, "extra"):
+            if self.extra.get("proxy_required"):
+                host = self.extra.get("proxy")
 
         conn = sshmanager.get(host)
         prefix = conn.get_prefix()
 
-        return prefix + ['--']
+        return prefix + ["--"]
 
     def wrap_command(self, command):
         """
@@ -100,10 +102,10 @@ class NetworkResource(Resource):
 
 @attr.s(eq=False)
 class ResourceManager:
-    instances: 'Dict[Type[ResourceManager], ResourceManager]' = {}
+    instances: "Dict[Type[ResourceManager], ResourceManager]" = {}
 
     @classmethod
-    def get(cls) -> 'ResourceManager':
+    def get(cls) -> "ResourceManager":
         instance = ResourceManager.instances.get(cls)
         if instance is None:
             instance = cls()
@@ -113,11 +115,11 @@ class ResourceManager:
     def __attrs_post_init__(self):
         self.resources: List[ManagedResource] = []
 
-    def _add_resource(self, resource: 'ManagedResource'):
+    def _add_resource(self, resource: "ManagedResource"):
         self.resources.append(resource)
         self.on_resource_added(resource)
 
-    def on_resource_added(self, resource: 'ManagedResource'):
+    def on_resource_added(self, resource: "ManagedResource"):
         pass
 
     def poll(self):
@@ -131,6 +133,7 @@ class ManagedResource(Resource):
     ManagedResource has a corresponding ResourceManager which handles these
     events.
     """
+
     manager_cls = ResourceManager
 
     timeout = attr.ib(default=2.0, init=False, validator=attr.validators.instance_of(float))

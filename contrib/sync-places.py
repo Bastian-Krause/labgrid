@@ -79,18 +79,14 @@ def main():
             for m in remove_matches:
                 print(f"Deleting match '{m}' for place {name}")
                 if not args.dry_run:
-                    await session.call(
-                        "org.labgrid.coordinator.del_place_match", name, m
-                    )
+                    await session.call("org.labgrid.coordinator.del_place_match", name, m)
                 changed = True
 
             for m in matches:
                 if not m in seen_matches:
                     print(f"Adding match '{m}' for place {name}")
                     if not args.dry_run:
-                        await session.call(
-                            "org.labgrid.coordinator.add_place_match", name, m
-                        )
+                        await session.call("org.labgrid.coordinator.add_place_match", name, m)
                     changed = True
 
             tags = config["places"][name].get("tags", {}).copy()
@@ -99,9 +95,7 @@ def main():
                     "Setting tags for place %s to %s"
                     % (
                         name,
-                        ", ".join(
-                            "%s=%s" % (key, value) for (key, value) in tags.items()
-                        ),
+                        ", ".join("%s=%s" % (key, value) for (key, value) in tags.items()),
                     )
                 )
 
@@ -111,9 +105,7 @@ def main():
                         tags[k] = ""
 
                 if not args.dry_run:
-                    await session.call(
-                        "org.labgrid.coordinator.set_place_tags", name, tags
-                    )
+                    await session.call("org.labgrid.coordinator.set_place_tags", name, tags)
                 changed = True
 
     async def do_dump(session, args):
@@ -161,9 +153,7 @@ def main():
     subparsers = parser.add_subparsers()
     subparsers.required = True
 
-    sync_parser = subparsers.add_parser(
-        "sync", help="Synchronize coordinator places with file"
-    )
+    sync_parser = subparsers.add_parser("sync", help="Synchronize coordinator places with file")
     sync_parser.add_argument(
         "places",
         metavar="FILE",
@@ -195,9 +185,7 @@ def main():
     if args.proxy:
         proxymanager.force_proxy(args.proxy)
 
-    session = start_session(
-        args.crossbar, os.environ.get("LG_CROSSBAR_REALM", "realm1"), {}
-    )
+    session = start_session(args.crossbar, os.environ.get("LG_CROSSBAR_REALM", "realm1"), {})
 
     return session.loop.run_until_complete(args.func(session, args))
 

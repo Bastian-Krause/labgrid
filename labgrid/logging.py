@@ -7,6 +7,7 @@ from .util import re_vt100
 
 DEFAULT_FORMAT = "%(levelname)-7.7s %(name)15.15s: %(message)s"
 
+
 def basicConfig(**kwargs):
     kwargs.setdefault("format", DEFAULT_FORMAT)
     indent = kwargs.get("indent", True)
@@ -18,8 +19,9 @@ def basicConfig(**kwargs):
 
 
 logging.CONSOLE = logging.INFO - 5
-assert(logging.CONSOLE > logging.DEBUG)
+assert logging.CONSOLE > logging.DEBUG
 logging.addLevelName(logging.CONSOLE, "CONSOLE")
+
 
 # Use composition instead of inheritance
 class StepFormatter:
@@ -39,9 +41,7 @@ class StepFormatter:
 
                 record.msg = (" " * self.indent_level) + record.msg
 
-                self.indent_level = getattr(
-                    record, "next_indent_level", self.indent_level
-                )
+                self.indent_level = getattr(record, "next_indent_level", self.indent_level)
 
             if hasattr(record, "step"):
                 record.pathname, record.filename, record.lineno = record.step.sourceinfo
@@ -53,12 +53,8 @@ class StepFormatter:
 
 @attr.s
 class SerialLoggingReporter:
-    bufs = attr.ib(
-        default=attr.Factory(dict), validator=attr.validators.instance_of(dict)
-    )
-    loggers = attr.ib(
-        default=attr.Factory(dict), validator=attr.validators.instance_of(dict)
-    )
+    bufs = attr.ib(default=attr.Factory(dict), validator=attr.validators.instance_of(dict))
+    loggers = attr.ib(default=attr.Factory(dict), validator=attr.validators.instance_of(dict))
     lastevent = attr.ib(
         default=None,
         validator=attr.validators.optional(attr.validators.instance_of(StepEvent)),

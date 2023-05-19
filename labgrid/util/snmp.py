@@ -4,6 +4,7 @@ from ..driver.exception import ExecutionError
 
 class SimpleSNMP:
     """A class that helps wrap pysnmp"""
+
     def __init__(self, host, community, port=161):
         if port is None:
             port = 161
@@ -14,9 +15,14 @@ class SimpleSNMP:
         self.context = hlapi.ContextData()
 
     def get(self, oid):
-        g = hlapi.getCmd(self.engine, self.community, self.transport,
-            self.context, hlapi.ObjectType(hlapi.ObjectIdentity(oid)),
-            lookupMib=False)
+        g = hlapi.getCmd(
+            self.engine,
+            self.community,
+            self.transport,
+            self.context,
+            hlapi.ObjectType(hlapi.ObjectIdentity(oid)),
+            lookupMib=False,
+        )
 
         error_indication, error_status, _, res = next(g)
         if error_indication or error_status:
@@ -24,8 +30,8 @@ class SimpleSNMP:
         return res[0][1]
 
     def set(self, oid, value):
-        identify = hlapi.ObjectType(hlapi.ObjectIdentity(oid),
-                   hlapi.Integer(value))
-        g = hlapi.setCmd(self.engine, self.community, self.transport,
-            self.context, identify, lookupMib=False)
+        identify = hlapi.ObjectType(hlapi.ObjectIdentity(oid), hlapi.Integer(value))
+        g = hlapi.setCmd(
+            self.engine, self.community, self.transport, self.context, identify, lookupMib=False
+        )
         next(g)

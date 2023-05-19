@@ -19,7 +19,10 @@ class SerialDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
     """
     Driver implementing the ConsoleProtocol interface over a SerialPort connection
     """
-    bindings = {"port": {"SerialPort", "NetworkSerialPort"}, }
+
+    bindings = {
+        "port": {"SerialPort", "NetworkSerialPort"},
+    }
 
     txdelay = attr.ib(default=0.0, validator=attr.validators.instance_of(float))
     timeout = attr.ib(default=3.0, validator=attr.validators.instance_of(float))
@@ -58,9 +61,7 @@ class SerialDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
 
     @Driver.check_bound
     def get_export_vars(self):
-        export_vars = {
-            "speed": str(self.port.speed)
-        }
+        export_vars = {"speed": str(self.port.speed)}
         if isinstance(self.port, SerialPort):
             export_vars["port"] = self.port.port
         else:
@@ -105,7 +106,8 @@ class SerialDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
                 self.serial.open()
             except serial.SerialException as e:
                 raise serial.SerialException(
-                    f"Could not open serial port {self.serial.port}: {str(e)}") from e
+                    f"Could not open serial port {self.serial.port}: {str(e)}"
+                ) from e
 
             self.status = 1
 

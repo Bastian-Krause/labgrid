@@ -24,6 +24,7 @@ class Status(enum.Enum):
 @attr.s(eq=False)
 class QuartusHPSStrategy(Strategy):
     """QuartusHPSStrategy - Strategy to flash QSPI via 'Quartus Prime Programmer and Tools'"""
+
     bindings = {
         "power": PowerProtocol,
         "quartushps": QuartusHPSDriver,
@@ -37,7 +38,7 @@ class QuartusHPSStrategy(Strategy):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
 
-    @step(args=['status'])
+    @step(args=["status"])
     def transition(self, status, *, step):
         if not isinstance(status, Status):
             status = Status[status]
@@ -60,7 +61,5 @@ class QuartusHPSStrategy(Strategy):
             # activate serial in order to make 'labgrid-client -s $STATE con' work
             self.target.activate(self.serial)
         else:
-            raise StrategyError(
-                f"no transition found from {self.status} to {status}"
-            )
+            raise StrategyError(f"no transition found from {self.status} to {status}")
         self.status = status

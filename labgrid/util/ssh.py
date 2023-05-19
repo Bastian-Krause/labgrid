@@ -13,7 +13,8 @@ from ..driver.exception import ExecutionError
 
 from .helper import get_free_port, processwrapper
 
-__all__ = ['sshmanager', 'SSHConnection', 'ForwardError']
+__all__ = ["sshmanager", "SSHConnection", "ForwardError"]
+
 
 def get_ssh_connect_timeout():
     return int(os.environ.get("LG_SSH_CONNECT_TIMEOUT", 30))
@@ -25,10 +26,11 @@ class SSHConnectionManager:
     should not be directly instantiated, use the exported sshmanager from this
     module instead.
     """
-    _connections: 'Dict[str, SSHConnection]' = attr.ib(
+
+    _connections: "Dict[str, SSHConnection]" = attr.ib(
         default=attr.Factory(dict),
         init=False,
-        validator=attr.validators.optional(attr.validators.instance_of(dict))
+        validator=attr.validators.optional(attr.validators.instance_of(dict)),
     )
 
     def __attrs_post_init__(self):
@@ -97,7 +99,7 @@ class SSHConnectionManager:
         con.get_file(remote_file, local_file)
 
     def close_all(self):
-        """Close all open connections and remove them from the manager """
+        """Close all open connections and remove them from the manager"""
         for name, connection in self._connections.items():
             if connection.isconnected():
                 connection.disconnect()
@@ -112,9 +114,7 @@ def _check_connected(func):
     @wraps(func)
     def wrapper(self, *_args, **_kwargs):
         if not self.isconnected():
-            raise ExecutionError(
-                f"{func.__qualname__} can not be called ({self} is not connected)"
-            )
+            raise ExecutionError(f"{func.__qualname__} can not be called ({self} is not connected)")
         return func(self, *_args, **_kwargs)
 
     return wrapper
@@ -129,14 +129,13 @@ class SSHConnection:
 
     A public identity infrastructure is assumed, no extra username or passwords
     are supported."""
+
     host = attr.ib(validator=attr.validators.instance_of(str))
-    _connected = attr.ib(
-        default=False, init=False, validator=attr.validators.instance_of(bool)
-    )
+    _connected = attr.ib(default=False, init=False, validator=attr.validators.instance_of(bool))
     _tmpdir = attr.ib(
         default=attr.Factory(lambda: tempfile.mkdtemp(prefix="lg-con-")),
         init=False,
-        validator=attr.validators.instance_of(str)
+        validator=attr.validators.instance_of(str),
     )
     _l_forwards = attr.ib(init=False, default=attr.Factory(dict))
     _r_forwards = attr.ib(init=False, default=attr.Factory(set))
@@ -155,8 +154,10 @@ class SSHConnection:
     def _get_ssh_control_args(self):
         if self._socket:
             return [
-                "-o", "ControlMaster=no",
-                "-o", f"ControlPath={self._socket}",
+                "-o",
+                "ControlMaster=no",
+                "-o",
+                f"ControlPath={self._socket}",
             ]
         return []
 
@@ -198,10 +199,17 @@ class SSHConnection:
         return ["ssh"] + self._get_ssh_args() + [self.host]
 
     @_check_connected
-    def run(self, command, *, codec="utf-8", decodeerrors="strict",
-            force_tty=False, stderr_merge=False, stderr_loglevel=None,
-            stdout_loglevel=None):
-
+    def run(
+        self,
+        command,
+        *,
+        codec="utf-8",
+        decodeerrors="strict",
+        force_tty=False,
+        stderr_merge=False,
+        stderr_loglevel=None,
+        stdout_loglevel=None,
+    ):
         """Run a command over the SSHConnection
 
         Args:
@@ -233,13 +241,10 @@ class SSHConnection:
             stderr_pipe = subprocess.PIPE
         try:
             sub = subprocess.Popen(
-                complete_cmd, stdout=subprocess.PIPE, stderr=stderr_pipe,
-                stdin=subprocess.DEVNULL
+                complete_cmd, stdout=subprocess.PIPE, stderr=stderr_pipe, stdin=subprocess.DEVNULL
             )
         except:
-            raise ExecutionError(
-                f"error executing command: {complete_cmd}"
-            )
+            raise ExecutionError(f"error executing command: {complete_cmd}")
 
         stdout = []
         stderr = []
@@ -255,10 +260,10 @@ class SSHConnection:
             for fd in select(readable, [], [])[0]:
                 stream, output, loglevel = readable[fd]
                 line = stream.readline().decode(codec, decodeerrors)
-                if line == "": # EOF
+                if line == "":  # EOF
                     del readable[fd]
                 else:
-                    line = line.rstrip('\n')
+                    line = line.rstrip("\n")
                     output.append(line)
                     if loglevel is not None:
                         self._logger.log(loglevel, line)
@@ -266,9 +271,17 @@ class SSHConnection:
         sub.communicate()
         return stdout, stderr, sub.returncode
 
-    def run_check(self, command, *, codec="utf-8", decodeerrors="strict",
-                  force_tty=False, stderr_merge=False, stderr_loglevel=None,
-                  stdout_loglevel=None):
+    def run_check(
+        self,
+        command,
+        *,
+        codec="utf-8",
+        decodeerrors="strict",
+        force_tty=False,
+        stderr_merge=False,
+        stderr_loglevel=None,
+        stdout_loglevel=None,
+    ):
         """
         Runs a command over the SSHConnection
         returns the output if successful, raises ExecutionError otherwise.
@@ -296,9 +309,13 @@ class SSHConnection:
 
         """
         stdout, stderr, exitcode = self.run(
-            command, codec=codec, decodeerrors=decodeerrors, force_tty=force_tty,
-            stderr_merge=stderr_merge, stdout_loglevel=stdout_loglevel,
-            stderr_loglevel=stderr_loglevel
+            command,
+            codec=codec,
+            decodeerrors=decodeerrors,
+            force_tty=force_tty,
+            stderr_merge=stderr_merge,
+            stdout_loglevel=stdout_loglevel,
+            stderr_loglevel=stderr_loglevel,
         )
 
         if exitcode != 0:
@@ -309,10 +326,7 @@ class SSHConnection:
     def get_file(self, remote_file, local_file):
         """Get a file from the remote host"""
         complete_cmd = ["scp"] + self._get_ssh_control_args()
-        complete_cmd += [
-            f"{self.host}:{remote_file}",
-            f"{local_file}"
-        ]
+        complete_cmd += [f"{self.host}:{remote_file}", f"{local_file}"]
         self._logger.debug("Running command: %s", complete_cmd)
         subprocess.check_call(
             complete_cmd,
@@ -322,17 +336,21 @@ class SSHConnection:
     @_check_connected
     def put_file(self, local_file, remote_path):
         """Put a file onto the remote host"""
-        complete_cmd = ["rsync", "--compress", "--sparse", "--copy-links", "--verbose", "--progress", "--times", "-e",
-                        " ".join(['ssh'] + self._get_ssh_args())]
-        complete_cmd += [
-            f"{local_file}",
-            f"{self.host}:{remote_path}"
+        complete_cmd = [
+            "rsync",
+            "--compress",
+            "--sparse",
+            "--copy-links",
+            "--verbose",
+            "--progress",
+            "--times",
+            "-e",
+            " ".join(["ssh"] + self._get_ssh_args()),
         ]
+        complete_cmd += [f"{local_file}", f"{self.host}:{remote_path}"]
         self._logger.debug("Running command: %s", complete_cmd)
         processwrapper.check_output(
-            complete_cmd,
-            stdin=subprocess.DEVNULL,
-            print_on_silent_log=True
+            complete_cmd, stdin=subprocess.DEVNULL, print_on_silent_log=True
         )
 
     @_check_connected
@@ -344,11 +362,7 @@ class SSHConnection:
 
         if destination in self._l_forwards:
             return self._l_forwards[destination]
-        self._run_socket_command(
-            "forward", [
-                f"-L{local_port}:{destination}"
-            ]
-        )
+        self._run_socket_command("forward", [f"-L{local_port}:{destination}"])
         self._l_forwards[destination] = local_port
         return local_port
 
@@ -361,11 +375,7 @@ class SSHConnection:
         if local_port is None:
             raise ForwardError("Forward does not exist")
 
-        self._run_socket_command(
-            "cancel", [
-                f"-L{local_port}:{destination}"
-            ]
-        )
+        self._run_socket_command("cancel", [f"-L{local_port}:{destination}"])
 
     @_check_connected
     def add_remote_port_forward(self, remote_port, local_port, remote_bind=None):
@@ -426,20 +436,26 @@ class SSHConnection:
 
     def _start_own_master(self):
         """Starts a controlmaster connection in a temporary directory."""
-        control = os.path.join(self._tmpdir, f'control-{self.host}')
+        control = os.path.join(self._tmpdir, f"control-{self.host}")
 
         connect_timeout = get_ssh_connect_timeout()
 
         self._logger.debug("ControlSocket: %s", control)
         args = ["ssh"] + SSHConnection._get_ssh_base_args()
         args += [
-            "-n", "-MN",
-            "-o", f"ConnectTimeout={connect_timeout}",
-            "-o", "ControlPersist=300",
-            "-o", "ControlMaster=yes",
-            "-o", f"ControlPath={control}",
+            "-n",
+            "-MN",
+            "-o",
+            f"ConnectTimeout={connect_timeout}",
+            "-o",
+            "ControlPersist=300",
+            "-o",
+            "ControlMaster=yes",
+            "-o",
+            f"ControlPath={control}",
             # We don't want to ask the user to confirm host keys here.
-            "-o", "StrictHostKeyChecking=yes",
+            "-o",
+            "StrictHostKeyChecking=yes",
             self.host,
         ]
 
@@ -470,7 +486,7 @@ class SSHConnection:
 
         self._socket = control
 
-        self._logger.debug('Connected to %s', self.host)
+        self._logger.debug("Connected to %s", self.host)
 
     def _stop_own_master(self):
         assert self._socket is not None
@@ -499,7 +515,7 @@ class SSHConnection:
             start_new_session=True,
         )
 
-        self._logger.debug('Started keepalive for %s', self.host)
+        self._logger.debug("Started keepalive for %s", self.host)
 
     def _check_keepalive(self):
         return self._keepalive.poll() is None
@@ -507,7 +523,7 @@ class SSHConnection:
     def _stop_keepalive(self):
         assert self._keepalive is not None
 
-        self._logger.debug('Stopping keepalive for %s', self.host)
+        self._logger.debug("Stopping keepalive for %s", self.host)
 
         try:
             self._keepalive.communicate(timeout=60)
@@ -541,7 +557,9 @@ class SSHConnection:
             self.disconnect()
         shutil.rmtree(self._tmpdir)
 
+
 sshmanager = SSHConnectionManager()
+
 
 @attr.s
 class ForwardError(Exception):

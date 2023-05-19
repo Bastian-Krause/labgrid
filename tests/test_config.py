@@ -5,6 +5,7 @@ import pytest
 from labgrid.config import Config
 from labgrid.exceptions import InvalidConfigError
 
+
 def test_get_target_option(tmpdir):
     p = tmpdir.join("config.yaml")
     p.write(
@@ -26,7 +27,7 @@ def test_get_target_option(tmpdir):
     c = Config(str(p))
     assert c.get_target_option("main", "str") == "test"
     assert c.get_target_option("main", "list") == [1, 2, 3]
-    assert c.get_target_option("main", "dict") == OrderedDict([('a', 1), ('b', 2)])
+    assert c.get_target_option("main", "dict") == OrderedDict([("a", 1), ("b", 2)])
     assert c.get_target_option("main", "bool") is False
     assert c.get_target_option("main", "int") == 0x20
     assert c.get_target_option("main", "float") == 3.14
@@ -39,6 +40,7 @@ def test_get_target_option(tmpdir):
     with pytest.raises(KeyError) as err:
         c.get_target_option("nonexist", "str")
     assert "No target" in str(err)
+
 
 def test_set_target_option(tmpdir):
     p = tmpdir.join("config.yaml")
@@ -61,6 +63,7 @@ def test_set_target_option(tmpdir):
     c.set_target_option("main", "obj", obj)
     assert c.get_target_option("main", "obj") is obj
 
+
 def test_template(tmpdir):
     p = tmpdir.join("config.yaml")
     p.write(
@@ -74,9 +77,10 @@ def test_template(tmpdir):
         """
     )
     c = Config(str(p))
-    assert 'a' in c.data['dict']['list']
-    assert c.data['dict']['list'][2] == str(tmpdir)
-    assert c.data['dict']['string'] == str(tmpdir)+'/suffix'
+    assert "a" in c.data["dict"]["list"]
+    assert c.data["dict"]["list"][2] == str(tmpdir)
+    assert c.data["dict"]["string"] == str(tmpdir) + "/suffix"
+
 
 def test_template_bad_placeholder(tmpdir):
     p = tmpdir.join("config.yaml")
@@ -90,6 +94,7 @@ def test_template_bad_placeholder(tmpdir):
     assert "is invalid" in excinfo.value.msg
     assert "template string" in excinfo.value.msg
 
+
 def test_template_bad_key(tmpdir):
     p = tmpdir.join("config.yaml")
     p.write(
@@ -101,6 +106,7 @@ def test_template_bad_key(tmpdir):
         Config(str(p))
     assert "unknown variable" in excinfo.value.msg
 
+
 def test_tool(tmpdir):
     t = tmpdir.join("testtool")
     t.write("content")
@@ -109,11 +115,14 @@ def test_tool(tmpdir):
         """
         tools:
           testtool: {}
-        """.format(t)
+        """.format(
+            t
+        )
     )
     c = Config(str(p))
 
     assert c.get_tool("testtool") == t
+
 
 def test_tool_no_explicit_tool(tmpdir):
     t = tmpdir.join("testtool")

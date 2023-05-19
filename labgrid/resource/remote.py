@@ -23,11 +23,11 @@ class RemotePlaceManager(ResourceManager):
             return
 
         from ..remote.client import start_session
+
         try:
-            self.session = start_session(self.url, self.realm, {'env': self.env})
+            self.session = start_session(self.url, self.realm, {"env": self.env})
         except ConnectionRefusedError as e:
-            raise ConnectionRefusedError(f"Could not connect to coordinator {self.url}") \
-                from e
+            raise ConnectionRefusedError(f"Could not connect to coordinator {self.url}") from e
 
         self.loop = self.session.loop
 
@@ -44,15 +44,16 @@ class RemotePlaceManager(ResourceManager):
             self.realm = os.environ.get("LG_CROSSBAR_REALM", "realm1")
             if self.env:
                 config = self.env.config
-                self.url = config.get_option('crossbar_url', self.url)
-                self.realm = config.get_option('crossbar_realm', self.realm)
+                self.url = config.get_option("crossbar_url", self.url)
+                self.realm = config.get_option("crossbar_realm", self.realm)
             self._start()
         place = self.session.get_place(remote_place.name)  # pylint: disable=no-member
         resource_entries = self.session.get_target_resources(place)  # pylint: disable=no-member
         expanded = []
         for (resource_name, _), resource_entry in resource_entries.items():
             new = target_factory.make_resource(
-                remote_place.target, resource_entry.cls, resource_name, resource_entry.args)
+                remote_place.target, resource_entry.cls, resource_name, resource_entry.args
+            )
             new.parent = remote_place
             new.avail = resource_entry.avail
             new.extra = resource_entry.extra
@@ -65,13 +66,14 @@ class RemotePlaceManager(ResourceManager):
 
     def poll(self):
         import asyncio
+
         if not self.loop.is_running():
             self.loop.run_until_complete(asyncio.sleep(0.1))
         for resource in self.resources + self.unmanaged_resources:
             if isinstance(resource, RemotePlace):
                 continue
             attrs = resource._remote_entry.args.copy()
-            attrs['avail'] = resource._remote_entry.avail
+            attrs["avail"] = resource._remote_entry.avail
             # TODO allow the resource to do the update itself?
             changes = []
             fields = attr.fields(resource.__class__)
@@ -99,6 +101,7 @@ class RemotePlace(ManagedResource):
         self.timeout = 10.0
         super().__attrs_post_init__()
 
+
 @attr.s(eq=False)
 class RemoteUSBResource(NetworkResource, ManagedResource):
     manager_cls = RemotePlaceManager
@@ -123,8 +126,11 @@ class RemoteAndroidUSBFastboot(RemoteUSBResource):
 class NetworkAndroidFastboot(RemoteAndroidUSBFastboot):
     def __attrs_post_init__(self):
         import warnings
-        warnings.warn("NetworkAndroidFastboot is deprecated, use RemoteAndroidUSBFastboot instead",
-                      DeprecationWarning)
+
+        warnings.warn(
+            "NetworkAndroidFastboot is deprecated, use RemoteAndroidUSBFastboot instead",
+            DeprecationWarning,
+        )
         super().__attrs_post_init__()
 
 
@@ -180,14 +186,12 @@ class NetworkAlteraUSBBlaster(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkSigrokUSBDevice(RemoteUSBResource):
     """The NetworkSigrokUSBDevice describes a remotely accessible sigrok USB device"""
-    driver = attr.ib(
-        default=None,
-        validator=attr.validators.instance_of(str)
-    )
+
+    driver = attr.ib(default=None, validator=attr.validators.instance_of(str))
     channels = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -197,14 +201,12 @@ class NetworkSigrokUSBDevice(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkSigrokUSBSerialDevice(RemoteUSBResource):
     """The NetworkSigrokUSBSerialDevice describes a remotely accessible sigrok USB device"""
-    driver = attr.ib(
-        default=None,
-        validator=attr.validators.instance_of(str)
-    )
+
+    driver = attr.ib(default=None, validator=attr.validators.instance_of(str))
     channels = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -214,6 +216,7 @@ class NetworkSigrokUSBSerialDevice(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBMassStorage(RemoteUSBResource):
     """The NetworkUSBMassStorage describes a remotely accessible USB storage device"""
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -223,10 +226,11 @@ class NetworkUSBMassStorage(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBSDMuxDevice(RemoteUSBResource):
     """The NetworkUSBSDMuxDevice describes a remotely accessible USBSDMux device"""
+
     control_path = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -236,19 +240,23 @@ class NetworkUSBSDMuxDevice(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBSDWireDevice(RemoteUSBResource):
     """The NetworkUSBSDWireDevice describes a remotely accessible USBSDWire device"""
+
     control_serial = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class NetworkSiSPMPowerPort(RemoteUSBResource):
     """The NetworkSiSPMPowerPort describes a remotely accessible SiS-PM power port"""
+
     index = attr.ib(default=None, validator=attr.validators.instance_of(int))
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -258,7 +266,9 @@ class NetworkSiSPMPowerPort(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBPowerPort(RemoteUSBResource):
     """The NetworkUSBPowerPort describes a remotely accessible USB hub port with power switching"""
+
     index = attr.ib(default=None, validator=attr.validators.instance_of(int))
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -268,6 +278,7 @@ class NetworkUSBPowerPort(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBVideo(RemoteUSBResource):
     """The NetworkUSBVideo describes a remotely accessible USB video device"""
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -277,11 +288,12 @@ class NetworkUSBVideo(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBAudioInput(RemoteUSBResource):
     """The NetworkUSBAudioInput describes a remotely accessible USB audio input device"""
+
     index = attr.ib(default=0, validator=attr.validators.instance_of(int))
     alsa_name = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -291,6 +303,7 @@ class NetworkUSBAudioInput(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBTMC(RemoteUSBResource):
     """The NetworkUSBTMC describes a remotely accessible USB TMC device"""
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -300,6 +313,7 @@ class NetworkUSBTMC(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkUSBDebugger(RemoteUSBResource):
     """The NetworkUSBDebugger describes a remotely accessible USB JTAG/Debugger device"""
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -309,8 +323,10 @@ class NetworkUSBDebugger(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkDeditecRelais8(RemoteUSBResource):
     """The NetworkDeditecRelais8 describes a remotely accessible USB relais port"""
+
     index = attr.ib(default=None, validator=attr.validators.instance_of(int))
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -320,8 +336,10 @@ class NetworkDeditecRelais8(RemoteUSBResource):
 @attr.s(eq=False)
 class NetworkHIDRelay(RemoteUSBResource):
     """The NetworkHIDRelay describes a remotely accessible USB relay port"""
+
     index = attr.ib(default=1, validator=attr.validators.instance_of(int))
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
@@ -334,9 +352,11 @@ class NetworkSysfsGPIO(NetworkResource, ManagedResource):
 
     """The NetworkSysfsGPIO describes a remotely accessible gpio line"""
     index = attr.ib(validator=attr.validators.optional(attr.validators.instance_of(int)))
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
+
 
 @attr.s(eq=False)
 class NetworkLXAIOBusNode(ManagedResource):
@@ -349,24 +369,29 @@ class NetworkLXAIOBusNode(ManagedResource):
         self.timeout = 30.0
         super().__attrs_post_init__()
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class NetworkLXAIOBusPIO(NetworkLXAIOBusNode):
     pin = attr.ib(validator=attr.validators.instance_of(str))
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class NetworkLXAUSBMux(RemoteUSBResource):
     """The NetworkLXAUSBMux describes a remotely accessible USBMux device"""
+
     def __attrs_post_init__(self):
         self.timeout = 10.0
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class NetworkUSBFlashableDevice(RemoteUSBResource):
     devnode = attr.ib(validator=attr.validators.optional(attr.validators.instance_of(str)))
+
 
 @attr.s(eq=False)
 class NetworkMQTTResource(ManagedResource):
@@ -379,12 +404,14 @@ class NetworkMQTTResource(ManagedResource):
         self.timeout = 30.0
         super().__attrs_post_init__()
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class RemoteNetworkInterface(NetworkResource, ManagedResource):
     manager_cls = RemotePlaceManager
 
     ifname = attr.ib(default=None)
+
 
 @attr.s(eq=False)
 class RemoteBaseProvider(NetworkResource):

@@ -33,9 +33,9 @@ class Suggester:
         self.log = logging.getLogger("suggester")
 
         args = {
-            'target': None,
-            'name': None,
-            'suggest': self.suggest_callback,
+            "target": None,
+            "name": None,
+            "suggest": self.suggest_callback,
         }
 
         self.resources.append(USBSerialPort(**args))
@@ -59,7 +59,7 @@ class Suggester:
 
     def suggest_callback(self, resource, meta, suggestions):
         cls = type(resource).__name__
-        if resource.device.action == 'add':
+        if resource.device.action == "add":
             print("=== added device ===")
         else:
             print("=== existing device ===")
@@ -78,12 +78,14 @@ class Suggester:
         for i, suggestion in enumerate(suggestions):
             if i:
                 print("  ---")
-            print(textwrap.indent(
-                dump({cls: {"match": suggestion}}).strip(),
-                '  ',
-            ))
-            if cls == 'USBPowerPort':
-                print('    index: ?')
+            print(
+                textwrap.indent(
+                    dump({cls: {"match": suggestion}}).strip(),
+                    "  ",
+                )
+            )
+            if cls == "USBPowerPort":
+                print("    index: ?")
         print("  ---")
         print()
 
@@ -98,17 +100,13 @@ class Suggester:
 def main():
     logging.basicConfig(
         level=logging.INFO,
-        format='%(levelname)7s %(name)-20s %(message)s',
+        format="%(levelname)7s %(name)-20s %(message)s",
         stream=sys.stderr,
     )
 
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-d',
-        '--debug',
-        action='store_true',
-        default=False,
-        help="enable debug mode"
+        "-d", "--debug", action="store_true", default=False, help="enable debug mode"
     )
 
     args = parser.parse_args()

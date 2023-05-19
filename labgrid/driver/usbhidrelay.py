@@ -25,7 +25,7 @@ class HIDRelayDriver(Driver, DigitalOutputProtocol):
         else:
             host = None
         self.wrapper = AgentWrapper(host)
-        self.proxy = self.wrapper.load('usb_hid_relay')
+        self.proxy = self.wrapper.load("usb_hid_relay")
 
     def on_deactivate(self):
         self.wrapper.close()
@@ -33,7 +33,7 @@ class HIDRelayDriver(Driver, DigitalOutputProtocol):
         self.proxy = None
 
     @Driver.check_active
-    @step(args=['status'])
+    @step(args=["status"])
     def set(self, status):
         if self.relay.invert:
             status = not status

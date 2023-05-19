@@ -12,7 +12,6 @@ from ..util.agentwrapper import AgentWrapper
 @target_factory.reg_driver
 @attr.s(eq=False)
 class GpioDigitalOutputDriver(Driver, DigitalOutputProtocol):
-
     bindings = {
         "gpio": {"SysfsGPIO", "NetworkSysfsGPIO"},
     }
@@ -27,7 +26,7 @@ class GpioDigitalOutputDriver(Driver, DigitalOutputProtocol):
         else:
             host = None
         self.wrapper = AgentWrapper(host)
-        self.proxy = self.wrapper.load('sysfsgpio')
+        self.proxy = self.wrapper.load("sysfsgpio")
 
     def on_deactivate(self):
         self.wrapper.close()
@@ -35,7 +34,7 @@ class GpioDigitalOutputDriver(Driver, DigitalOutputProtocol):
         self.proxy = None
 
     @Driver.check_active
-    @step(args=['status'])
+    @step(args=["status"])
     def set(self, status):
         self.proxy.set(self.gpio.index, status)
 

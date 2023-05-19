@@ -23,62 +23,98 @@ class USBVideoDriver(Driver, VideoProtocol):
 
     def get_qualities(self):
         match = (self.video.vendor_id, self.video.model_id)
-        if match == (0x046d, 0x082d):
-            return ("mid", [
-                ("low", "video/x-h264,width=640,height=360,framerate=5/1"),
-                ("mid", "video/x-h264,width=1280,height=720,framerate=15/2"),
-                ("high", "video/x-h264,width=1920,height=1080,framerate=10/1"),
-                ])
-        if match == (0x046d, 0x0892):
-            return ("mid", [
-                ("low", "image/jpeg,width=640,height=360,framerate=5/1"),
-                ("mid", "image/jpeg,width=1280,height=720,framerate=15/2"),
-                ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
-                ])
-        if match == (0x046d, 0x08e5): # Logitech HD Pro Webcam C920
-            return ("mid", [
-                ("low", "image/jpeg,width=640,height=360,framerate=5/1"),
-                ("mid", "image/jpeg,width=1280,height=720,framerate=15/2"),
-                ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
-                ])
-        if match == (0x1224, 0x2825): # LogiLink UA0371
-            return ("mid", [
+        if match == (0x046D, 0x082D):
+            return (
+                "mid",
+                [
+                    ("low", "video/x-h264,width=640,height=360,framerate=5/1"),
+                    ("mid", "video/x-h264,width=1280,height=720,framerate=15/2"),
+                    ("high", "video/x-h264,width=1920,height=1080,framerate=10/1"),
+                ],
+            )
+        if match == (0x046D, 0x0892):
+            return (
+                "mid",
+                [
+                    ("low", "image/jpeg,width=640,height=360,framerate=5/1"),
+                    ("mid", "image/jpeg,width=1280,height=720,framerate=15/2"),
+                    ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
+                ],
+            )
+        if match == (0x046D, 0x08E5):  # Logitech HD Pro Webcam C920
+            return (
+                "mid",
+                [
+                    ("low", "image/jpeg,width=640,height=360,framerate=5/1"),
+                    ("mid", "image/jpeg,width=1280,height=720,framerate=15/2"),
+                    ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
+                ],
+            )
+        if match == (0x1224, 0x2825):  # LogiLink UA0371
+            return (
+                "mid",
+                [
+                    ("low", "image/jpeg,width=640,height=480,framerate=30/1"),
+                    ("mid", "image/jpeg,width=1280,height=720,framerate=30/1"),
+                    ("high", "image/jpeg,width=1920,height=1080,framerate=30/1"),
+                ],
+            )
+        if match == (0x05A3, 0x9331):  # WansView Webcam 102
+            return (
+                "mid",
+                [
+                    ("low", "video/x-h264,width=640,height=360,framerate=30/1"),
+                    ("mid", "video/x-h264,width=1280,height=720,framerate=30/1"),
+                    ("high", "video/x-h264,width=1920,height=1080,framerate=30/1"),
+                ],
+            )
+        if match == (0x534D, 0x2109):  # MacroSilicon
+            return (
+                "mid",
+                [
+                    ("low", "image/jpeg,width=720,height=480,framerate=10/1"),
+                    ("mid", "image/jpeg,width=1280,height=720,framerate=10/1"),
+                    ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
+                ],
+            )
+        if match == (0x1D6C, 0x0103):  # HD 2MP WEBCAM
+            return (
+                "mid",
+                [
+                    ("low", "video/x-h264,width=640,height=480,framerate=25/1"),
+                    ("mid", "video/x-h264,width=1280,height=720,framerate=25/1"),
+                    ("high", "video/x-h264,width=1920,height=1080,framerate=25/1"),
+                ],
+            )
+        if match == (0x0C45, 0x636D):  # AUKEY PC-LM1E
+            return (
+                "mid",
+                [
+                    (
+                        "low",
+                        "image/jpeg,width=640,height=480,pixel-aspect-ratio=1/1,framerate=30/1",
+                    ),
+                    (
+                        "mid",
+                        "image/jpeg,width=864,height=480,pixel-aspect-ratio=1/1,framerate=30/1",
+                    ),
+                    (
+                        "high",
+                        "image/jpeg,width=1280,height=1024,pixel-aspect-ratio=1/1,framerate=30/1",
+                    ),
+                ],
+            )
+        self.logger.warning(
+            "Unkown USB video device {:04x}:{:04x}, using fallback pipeline.".format(*match)
+        )
+        return (
+            "mid",
+            [
                 ("low", "image/jpeg,width=640,height=480,framerate=30/1"),
                 ("mid", "image/jpeg,width=1280,height=720,framerate=30/1"),
                 ("high", "image/jpeg,width=1920,height=1080,framerate=30/1"),
-                ])
-        if match == (0x05a3, 0x9331): # WansView Webcam 102
-            return ("mid", [
-                ("low","video/x-h264,width=640,height=360,framerate=30/1"),
-                ("mid","video/x-h264,width=1280,height=720,framerate=30/1"),
-                ("high","video/x-h264,width=1920,height=1080,framerate=30/1"),
-                ])
-        if match == (0x534d, 0x2109): # MacroSilicon
-            return ("mid", [
-                ("low", "image/jpeg,width=720,height=480,framerate=10/1"),
-                ("mid", "image/jpeg,width=1280,height=720,framerate=10/1"),
-                ("high", "image/jpeg,width=1920,height=1080,framerate=10/1"),
-                ])
-        if match == (0x1d6c, 0x0103): # HD 2MP WEBCAM
-            return ("mid", [
-                ("low", "video/x-h264,width=640,height=480,framerate=25/1"),
-                ("mid", "video/x-h264,width=1280,height=720,framerate=25/1"),
-                ("high", "video/x-h264,width=1920,height=1080,framerate=25/1"),
-                ])
-        if match == (0x0c45, 0x636d): # AUKEY PC-LM1E
-            return ("mid", [
-                ("low", "image/jpeg,width=640,height=480,pixel-aspect-ratio=1/1,framerate=30/1"),
-                ("mid", "image/jpeg,width=864,height=480,pixel-aspect-ratio=1/1,framerate=30/1"),
-                ("high", "image/jpeg,width=1280,height=1024,pixel-aspect-ratio=1/1,framerate=30/1"),
-                ])
-        self.logger.warning(
-            "Unkown USB video device {:04x}:{:04x}, using fallback pipeline."
-            .format(*match))
-        return ("mid", [
-            ("low", "image/jpeg,width=640,height=480,framerate=30/1"),
-            ("mid", "image/jpeg,width=1280,height=720,framerate=30/1"),
-            ("high", "image/jpeg,width=1920,height=1080,framerate=30/1"),
-            ])
+            ],
+        )
 
     def select_caps(self, hint=None):
         default, variants = self.get_qualities()
@@ -92,28 +128,28 @@ class USBVideoDriver(Driver, VideoProtocol):
 
     def get_pipeline(self, path, caps, controls=None):
         match = (self.video.vendor_id, self.video.model_id)
-        if match == (0x046d, 0x082d):
+        if match == (0x046D, 0x082D):
             controls = controls or "focus_auto=1"
             inner = "h264parse"
-        elif match == (0x046d, 0x0892):
+        elif match == (0x046D, 0x0892):
             controls = controls or "focus_auto=1"
             inner = None
-        elif match == (0x046d, 0x08e5):
+        elif match == (0x046D, 0x08E5):
             controls = controls or "focus_auto=1"
             inner = None
-        elif match == (0x1224, 0x2825): # LogiLink UA0371
+        elif match == (0x1224, 0x2825):  # LogiLink UA0371
             inner = None  # just forward the jpeg frames
-        elif match == (0x05a3, 0x9331): # WansView Webcam 102
+        elif match == (0x05A3, 0x9331):  # WansView Webcam 102
             inner = "h264parse"
-        elif match == (0x534d, 0x2109):
+        elif match == (0x534D, 0x2109):
             inner = None  # just forward the jpeg frames
-        elif match == (0x1d6c, 0x0103):
+        elif match == (0x1D6C, 0x0103):
             controls = controls or "focus_auto=1"
             inner = "h264parse"
-        elif match == (0x0c54, 0x636d):
+        elif match == (0x0C54, 0x636D):
             controls = controls or "focus_auto=1"
             inner = None  # just forward the jpeg frames
-        else: # fallback pipeline
+        else:  # fallback pipeline
             inner = None  # just forward the jpeg frames
 
         pipeline = f"v4l2src device={path} "

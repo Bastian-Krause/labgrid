@@ -9,14 +9,14 @@ from labgrid.driver.gpiodriver import GpioDigitalOutputDriver
 # enable debug logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
+    format="%(levelname)7s: %(message)s",
     stream=sys.stderr,
 )
 
 # show labgrid steps on the console
 StepReporter.start()
 
-e = labgrid.Environment('import-gpio.yaml')
+e = labgrid.Environment("import-gpio.yaml")
 t = e.get_target()
 
 p = t.get_driver("DigitalOutputProtocol")

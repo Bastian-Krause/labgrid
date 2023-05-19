@@ -19,17 +19,18 @@ class UdevManager(ResourceManager):
         super().__attrs_post_init__()
         self.queue = queue.Queue()
 
-        self.log = logging.getLogger('UdevManager')
-        self._pyudev = import_module('pyudev')
+        self.log = logging.getLogger("UdevManager")
+        self._pyudev = import_module("pyudev")
         self._context = self._pyudev.Context()
         self._monitor = self._pyudev.Monitor.from_netlink(self._context)
-        self._observer = self._pyudev.MonitorObserver(self._monitor,
-                                                callback=self._insert_into_queue)
+        self._observer = self._pyudev.MonitorObserver(
+            self._monitor, callback=self._insert_into_queue
+        )
         self._observer.start()
 
     def on_resource_added(self, resource):
         devices = self._context.list_devices()
-        devices.match_subsystem(resource.match['SUBSYSTEM'])
+        devices.match_subsystem(resource.match["SUBSYSTEM"])
         for device in devices:
             if resource.try_match(device):
                 self.log.debug(" matched successfully against %s", resource.device)
@@ -49,6 +50,7 @@ class UdevManager(ResourceManager):
                 if resource.try_match(device):
                     self.log.debug(" matched successfully")
 
+
 @attr.s(eq=False)
 class USBResource(ManagedResource):
     manager_cls = UdevManager
@@ -59,8 +61,8 @@ class USBResource(ManagedResource):
 
     def __attrs_post_init__(self):
         self.timeout = 5.0
-        self.log = logging.getLogger('USBResource')
-        self.match.setdefault('SUBSYSTEM', 'usb')
+        self.log = logging.getLogger("USBResource")
+        self.match.setdefault("SUBSYSTEM", "usb")
         super().__attrs_post_init__()
 
     def filter_match(self, device):  # pylint: disable=unused-argument,no-self-use
@@ -71,40 +73,41 @@ class USBResource(ManagedResource):
         suggestions = []
 
         if self.device.device_node:
-            meta['device node'] = self.device.device_node
+            meta["device node"] = self.device.device_node
         if list(self.device.tags):
-            meta['udev tags'] = ', '.join(self.device.tags)
-        if self.device.properties.get('ID_VENDOR'):
-            meta['vendor'] = self.device.properties.get('ID_VENDOR')
-        if self.device.properties.get('ID_VENDOR_FROM_DATABASE'):
-            meta['vendor (DB)'] = self.device.properties.get('ID_VENDOR_FROM_DATABASE')
-        if self.device.properties.get('ID_MODEL'):
-            meta['model'] = self.device.properties.get('ID_MODEL')
-        if self.device.properties.get('ID_MODEL_FROM_DATABASE'):
-            meta['model (DB)'] = self.device.properties.get('ID_MODEL_FROM_DATABASE')
-        if self.device.properties.get('ID_REVISION'):
-            meta['revision'] = self.device.properties.get('ID_REVISION')
+            meta["udev tags"] = ", ".join(self.device.tags)
+        if self.device.properties.get("ID_VENDOR"):
+            meta["vendor"] = self.device.properties.get("ID_VENDOR")
+        if self.device.properties.get("ID_VENDOR_FROM_DATABASE"):
+            meta["vendor (DB)"] = self.device.properties.get("ID_VENDOR_FROM_DATABASE")
+        if self.device.properties.get("ID_MODEL"):
+            meta["model"] = self.device.properties.get("ID_MODEL")
+        if self.device.properties.get("ID_MODEL_FROM_DATABASE"):
+            meta["model (DB)"] = self.device.properties.get("ID_MODEL_FROM_DATABASE")
+        if self.device.properties.get("ID_REVISION"):
+            meta["revision"] = self.device.properties.get("ID_REVISION")
 
-        path = self.device.properties.get('ID_PATH')
+        path = self.device.properties.get("ID_PATH")
         if path:
-            suggestions.append({'ID_PATH': path})
-        elif self.match.get('@SUBSYSTEM', None) == 'usb':
-            path = self._get_usb_device().properties.get('ID_PATH')
+            suggestions.append({"ID_PATH": path})
+        elif self.match.get("@SUBSYSTEM", None) == "usb":
+            path = self._get_usb_device().properties.get("ID_PATH")
             if path:
-                suggestions.append({'@ID_PATH': path})
+                suggestions.append({"@ID_PATH": path})
 
-        serial = self.device.properties.get('ID_SERIAL_SHORT')
+        serial = self.device.properties.get("ID_SERIAL_SHORT")
         if serial:
-            suggestions.append({'ID_SERIAL_SHORT': serial})
-        elif self.match.get('@SUBSYSTEM', None) == 'usb':
-            serial = self._get_usb_device().properties.get('ID_SERIAL_SHORT')
+            suggestions.append({"ID_SERIAL_SHORT": serial})
+        elif self.match.get("@SUBSYSTEM", None) == "usb":
+            serial = self._get_usb_device().properties.get("ID_SERIAL_SHORT")
             if serial:
-                suggestions.append({'@ID_SERIAL_SHORT': serial})
+                suggestions.append({"@ID_SERIAL_SHORT": serial})
 
         return meta, suggestions
 
     def try_match(self, device):
         if self.device is None:  # new device
+
             def match_single(dev, key, value):
                 if dev.properties.get(key) == value:
                     return True
@@ -121,7 +124,7 @@ class USBResource(ManagedResource):
                 return False
 
             for k, v in self.match.items():
-                if k.startswith('@'):
+                if k.startswith("@"):
                     if not match_ancestors(k[1:], v):
                         return False
                 else:
@@ -136,19 +139,19 @@ class USBResource(ManagedResource):
 
         self.log.debug(" found match: %s", self)
 
-        if self.suggest and device.action in [None, 'add']:
+        if self.suggest and device.action in [None, "add"]:
             self.device = device
             self.suggest(self, *self.suggest_match(device))
             self.device = None
             return False
 
-        if device.action in [None, 'add']:
+        if device.action in [None, "add"]:
             if self.avail:
                 warnings.warn(f"udev device {device} is already available")
             self.device = device
-        elif device.action in ['change', 'move']:
+        elif device.action in ["change", "move"]:
             self.device = device
-        elif device.action in ['unbind', 'remove']:
+        elif device.action in ["unbind", "remove"]:
             self.device = None
 
         self.avail = self.device is not None
@@ -163,7 +166,7 @@ class USBResource(ManagedResource):
     def busnum(self):
         device = self._get_usb_device()
         if device:
-            return int(device.properties.get('BUSNUM'))
+            return int(device.properties.get("BUSNUM"))
 
         return None
 
@@ -171,15 +174,16 @@ class USBResource(ManagedResource):
     def devnum(self):
         device = self._get_usb_device()
         if device:
-            return int(device.properties.get('DEVNUM'))
+            return int(device.properties.get("DEVNUM"))
 
         return None
 
     def _get_usb_device(self):
         device = self.device
-        if self.device is not None and (self.device.subsystem != 'usb'
-                                        or self.device.device_type != 'usb_device'):
-            device = self.device.find_parent('usb', 'usb_device')
+        if self.device is not None and (
+            self.device.subsystem != "usb" or self.device.device_type != "usb_device"
+        ):
+            device = self.device.find_parent("usb", "usb_device")
         return device
 
     @property
@@ -194,7 +198,7 @@ class USBResource(ManagedResource):
     def vendor_id(self):
         device = self._get_usb_device()
         if device:
-            return int(device.properties.get('ID_VENDOR_ID'), 16)
+            return int(device.properties.get("ID_VENDOR_ID"), 16)
 
         return None
 
@@ -202,7 +206,7 @@ class USBResource(ManagedResource):
     def model_id(self):
         device = self._get_usb_device()
         if device:
-            return int(device.properties.get('ID_MODEL_ID'), 16)
+            return int(device.properties.get("ID_MODEL_ID"), 16)
 
         return None
 
@@ -215,8 +219,8 @@ class USBResource(ManagedResource):
         # FIXME update pyudev to support udev_device_set_sysattr_value(dev,
         # attr, None) to clear the cache
         if self.device is not None:
-            with open(os.path.join(self.device.sys_path, attribute), 'rb') as f:
-                return f.read().rstrip(b'\n') # drop trailing newlines
+            with open(os.path.join(self.device.sys_path, attribute), "rb") as f:
+                return f.read().rstrip(b"\n")  # drop trailing newlines
 
         return None
 
@@ -225,8 +229,8 @@ class USBResource(ManagedResource):
 @attr.s(eq=False)
 class USBSerialPort(USBResource, SerialPort):
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'tty'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "tty"
+        self.match["@SUBSYSTEM"] = "usb"
         if self.port:
             warnings.warn(
                 "USBSerialPort: The port attribute will be overwritten by udev.\n"
@@ -241,13 +245,14 @@ class USBSerialPort(USBResource, SerialPort):
         else:
             self.port = None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBMassStorage(USBResource):
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'block'
-        self.match['DEVTYPE'] = 'disk'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "block"
+        self.match["DEVTYPE"] = "disk"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     # Overwrite the avail attribute with our internal property
@@ -267,110 +272,130 @@ class USBMassStorage(USBResource):
 
         return None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class IMXUSBLoader(USBResource):
     def filter_match(self, device):
-        match = (device.properties.get('ID_VENDOR_ID'), device.properties.get('ID_MODEL_ID'))
+        match = (device.properties.get("ID_VENDOR_ID"), device.properties.get("ID_MODEL_ID"))
 
-        if match not in [("15a2", "0054"), ("15a2", "0061"),
-                         ("15a2", "0063"), ("15a2", "0071"),
-                         ("15a2", "007d"), ("15a2", "0076"),
-                         ("15a2", "0080"), ("15a2", "003a"),
-                         ("1fc9", "0128"), ("1fc9", "0126"),
-                         ("1fc9", "012b"), ("1fc9", "0134"),
-                         ("1fc9", "013e"), ("1fc9", "0146"),
-                         ("1b67", "4fff"), ("0525", "b4a4"), # SPL
-                         ("3016", "1001"),
-                         ]:
+        if match not in [
+            ("15a2", "0054"),
+            ("15a2", "0061"),
+            ("15a2", "0063"),
+            ("15a2", "0071"),
+            ("15a2", "007d"),
+            ("15a2", "0076"),
+            ("15a2", "0080"),
+            ("15a2", "003a"),
+            ("1fc9", "0128"),
+            ("1fc9", "0126"),
+            ("1fc9", "012b"),
+            ("1fc9", "0134"),
+            ("1fc9", "013e"),
+            ("1fc9", "0146"),
+            ("1b67", "4fff"),
+            ("0525", "b4a4"),  # SPL
+            ("3016", "1001"),
+        ]:
             return False
 
         return super().filter_match(device)
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class RKUSBLoader(USBResource):
     def filter_match(self, device):
-        match = (device.properties.get('ID_VENDOR_ID'), device.properties.get('ID_MODEL_ID'))
+        match = (device.properties.get("ID_VENDOR_ID"), device.properties.get("ID_MODEL_ID"))
 
         if match not in [("2207", "110a")]:
             return False
 
         return super().filter_match(device)
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class MXSUSBLoader(USBResource):
     def filter_match(self, device):
-        match = (device.properties.get('ID_VENDOR_ID'), device.properties.get('ID_MODEL_ID'))
+        match = (device.properties.get("ID_VENDOR_ID"), device.properties.get("ID_MODEL_ID"))
 
         if match not in [("066f", "3780"), ("15a2", "004f")]:
             return False
 
         return super().filter_match(device)
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class AndroidUSBFastboot(USBResource):
-    usb_vendor_id = attr.ib(default='1d6b', validator=attr.validators.instance_of(str))
-    usb_product_id = attr.ib(default='0104', validator=attr.validators.instance_of(str))
+    usb_vendor_id = attr.ib(default="1d6b", validator=attr.validators.instance_of(str))
+    usb_product_id = attr.ib(default="0104", validator=attr.validators.instance_of(str))
+
     def filter_match(self, device):
         if device.properties.get("adb_user") == "yes":
             return True
-        if device.properties.get('ID_VENDOR_ID') != self.usb_vendor_id:
+        if device.properties.get("ID_VENDOR_ID") != self.usb_vendor_id:
             return False
-        if device.properties.get('ID_MODEL_ID') != self.usb_product_id:
+        if device.properties.get("ID_MODEL_ID") != self.usb_product_id:
             return False
         return super().filter_match(device)
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class AndroidFastboot(AndroidUSBFastboot):
     def __attrs_post_init__(self):
-        warnings.warn("AndroidFastboot is deprecated, use AndroidUSBFastboot instead",
-                      DeprecationWarning)
+        warnings.warn(
+            "AndroidFastboot is deprecated, use AndroidUSBFastboot instead", DeprecationWarning
+        )
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class DFUDevice(USBResource):
     def filter_match(self, device):
-        if ':fe0102:' not in device.properties.get('ID_USB_INTERFACES', ''):
+        if ":fe0102:" not in device.properties.get("ID_USB_INTERFACES", ""):
             return False
 
         return super().filter_match(device)
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBNetworkInterface(USBResource, NetworkInterface):
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'net'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "net"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     def update(self):
         super().update()
         if self.device is not None:
-            self.ifname = self.device.properties.get('INTERFACE')
+            self.ifname = self.device.properties.get("INTERFACE")
         else:
             self.ifname = None
 
     @property
     def if_state(self):
-        value = self.read_attr('operstate')
+        value = self.read_attr("operstate")
         if value is not None:
-            value = value.decode('ascii')
+            value = value.decode("ascii")
         return value
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class AlteraUSBBlaster(USBResource):
     def filter_match(self, device):
-        if device.properties.get('ID_VENDOR_ID') != "09fb":
+        if device.properties.get("ID_VENDOR_ID") != "09fb":
             return False
-        if device.properties.get('ID_MODEL_ID') not in ["6010", "6810"]:
+        if device.properties.get("ID_MODEL_ID") not in ["6010", "6810"]:
             return False
         return super().filter_match(device)
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -384,18 +409,16 @@ class SigrokUSBDevice(USBResource):
         driver (str): driver to use with sigrok
         channels (str): a sigrok channel mapping as described in the sigrok-cli man page
     """
-    driver = attr.ib(
-        default=None,
-        validator=attr.validators.instance_of(str)
-    )
+
+    driver = attr.ib(default=None, validator=attr.validators.instance_of(str))
     channels = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
 
     def __attrs_post_init__(self):
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -409,18 +432,15 @@ class SigrokUSBSerialDevice(USBResource):
         driver (str): driver to use with sigrok
         channels (str): a sigrok channel mapping as described in the sigrok-cli man page
     """
-    driver = attr.ib(
-        default=None,
-        validator=attr.validators.instance_of(str)
-    )
+
+    driver = attr.ib(default=None, validator=attr.validators.instance_of(str))
     channels = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
 
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'tty'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "tty"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     @property
@@ -430,6 +450,7 @@ class SigrokUSBSerialDevice(USBResource):
 
         return None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBSDWireDevice(USBResource):
@@ -437,20 +458,14 @@ class USBSDWireDevice(USBResource):
     it is identified via USB using udev
     """
 
-    control_path = attr.ib(
-        default=None,
-        validator=attr.validators.optional(str)
-    )
-    disk_path = attr.ib(
-        default=None,
-        validator=attr.validators.optional(str)
-    )
+    control_path = attr.ib(default=None, validator=attr.validators.optional(str))
+    disk_path = attr.ib(default=None, validator=attr.validators.optional(str))
 
     def __attrs_post_init__(self):
-        self.match['ID_VENDOR_ID'] = '04e8'
-        self.match['ID_MODEL_ID'] = '6001'
-        self.match['@ID_VENDOR_ID'] = '0424'
-        self.match['@ID_MODEL_ID'] = '2640'
+        self.match["ID_VENDOR_ID"] = "04e8"
+        self.match["ID_MODEL_ID"] = "6001"
+        self.match["@ID_VENDOR_ID"] = "0424"
+        self.match["@ID_MODEL_ID"] = "2640"
         super().__attrs_post_init__()
 
     # Overwrite the avail attribute with our internal property
@@ -473,13 +488,14 @@ class USBSDWireDevice(USBResource):
         else:
             if not self.avail:
                 for child in self.device.parent.children:
-                    if child.subsystem == 'block' and child.device_type == 'disk':
+                    if child.subsystem == "block" and child.device_type == "disk":
                         self.disk_path = child.device_node
-                self.control_serial = self.device.properties.get('ID_SERIAL_SHORT')
+                self.control_serial = self.device.properties.get("ID_SERIAL_SHORT")
 
     @property
     def path(self):
         return self.disk_path
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -492,8 +508,8 @@ class USBSDMuxDevice(USBResource):
     disk_path = attr.ib(default=None)
 
     def __attrs_post_init__(self):
-        self.match['ID_VENDOR_ID'] = '0424'
-        self.match['ID_MODEL_ID'] = '4041'
+        self.match["ID_VENDOR_ID"] = "0424"
+        self.match["ID_MODEL_ID"] = "4041"
         super().__attrs_post_init__()
 
     # Overwrite the avail attribute with our internal property
@@ -516,14 +532,15 @@ class USBSDMuxDevice(USBResource):
         else:
             if not self.avail:
                 for child in self.device.children:
-                    if child.subsystem == 'block' and child.device_type == 'disk':
+                    if child.subsystem == "block" and child.device_type == "disk":
                         self.disk_path = child.device_node
-                    elif child.subsystem == 'scsi_generic':
+                    elif child.subsystem == "scsi_generic":
                         self.control_path = child.device_node
 
     @property
     def path(self):
         return self.disk_path
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -534,11 +551,14 @@ class USBPowerPort(USBResource):
     Args:
         index (int): index of the downstream port on the USB hub
     """
+
     index = attr.ib(default=None, validator=attr.validators.instance_of(int))
+
     def __attrs_post_init__(self):
-        self.match['DEVTYPE'] = 'usb_interface'
-        self.match['DRIVER'] = 'hub'
+        self.match["DEVTYPE"] = "usb_interface"
+        self.match["DRIVER"] = "hub"
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -548,33 +568,38 @@ class SiSPMPowerPort(USBResource):
     Args:
         index (int): port index
     """
+
     index = attr.ib(default=0, validator=attr.validators.instance_of(int))
 
     def filter_match(self, device):
-        match = (device.properties.get('ID_VENDOR_ID'), device.properties.get('ID_MODEL_ID'))
+        match = (device.properties.get("ID_VENDOR_ID"), device.properties.get("ID_MODEL_ID"))
 
         if match not in [
-                ("04b4", "fd10"), ("04b4", "fd11"),
-                ("04b4", "fd12"), ("04b4", "fd13"),
-                ("04b4", "fd15")]:
+            ("04b4", "fd10"),
+            ("04b4", "fd11"),
+            ("04b4", "fd12"),
+            ("04b4", "fd13"),
+            ("04b4", "fd15"),
+        ]:
             return False
 
         return super().filter_match(device)
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBVideo(USBResource):
     def filter_match(self, device):
-        capabilities = device.properties.get('ID_V4L_CAPABILITIES').split(':')
+        capabilities = device.properties.get("ID_V4L_CAPABILITIES").split(":")
 
-        if 'capture' not in capabilities:
+        if "capture" not in capabilities:
             return False
 
         return super().filter_match(device)
 
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'video4linux'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "video4linux"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     @property
@@ -583,6 +608,7 @@ class USBVideo(USBResource):
             return self.device.device_node
 
         return None
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -599,8 +625,8 @@ class USBAudioInput(USBResource):
         return super().filter_match(device)
 
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'sound'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "sound"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     @property
@@ -619,13 +645,14 @@ class USBAudioInput(USBResource):
 
         return None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBTMC(USBResource):
     def __attrs_post_init__(self):
-        self.match['SUBSYSTEM'] = 'usbmisc'
-        self.match['@DRIVER'] = 'usbtmc'
-        self.match['@SUBSYSTEM'] = 'usb'
+        self.match["SUBSYSTEM"] = "usbmisc"
+        self.match["@DRIVER"] = "usbtmc"
+        self.match["@SUBSYSTEM"] = "usb"
         super().__attrs_post_init__()
 
     @property
@@ -635,6 +662,7 @@ class USBTMC(USBResource):
 
         return None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class DeditecRelais8(USBResource):
@@ -642,9 +670,9 @@ class DeditecRelais8(USBResource):
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))
 
     def __attrs_post_init__(self):
-        self.match['ID_VENDOR'] = 'DEDITEC'
+        self.match["ID_VENDOR"] = "DEDITEC"
         # Deditec does not set proper model/vendor IDs, so we use ID_MODEL instead
-        self.match['ID_MODEL'] = 'DEDITEC_USB-OPT_REL-8'
+        self.match["ID_MODEL"] = "DEDITEC_USB-OPT_REL-8"
         super().__attrs_post_init__()
 
 
@@ -655,9 +683,10 @@ class HIDRelay(USBResource):
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))
 
     def __attrs_post_init__(self):
-        self.match['ID_VENDOR_ID'] = '16c0'
-        self.match['ID_MODEL_ID'] = '05df'
+        self.match["ID_VENDOR_ID"] = "16c0"
+        self.match["ID_MODEL_ID"] = "05df"
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
@@ -668,6 +697,7 @@ class USBFlashableDevice(USBResource):
             return self.device.device_node
         return None
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class LXAUSBMux(USBResource):
@@ -676,23 +706,25 @@ class LXAUSBMux(USBResource):
     """
 
     def __attrs_post_init__(self):
-        self.match['ID_VENDOR_ID'] = '33f7'
-        self.match['ID_MODEL_ID'] = '0001'
+        self.match["ID_VENDOR_ID"] = "33f7"
+        self.match["ID_MODEL_ID"] = "0001"
         super().__attrs_post_init__()
+
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class USBDebugger(USBResource):
     def filter_match(self, device):
-        match = (device.properties.get('ID_VENDOR_ID'), device.properties.get('ID_MODEL_ID'))
+        match = (device.properties.get("ID_VENDOR_ID"), device.properties.get("ID_MODEL_ID"))
 
-        if match not in [("0403", "6010"),  # FT2232C/D/H Dual UART/FIFO IC
-                         ("0483", "374f"),  # STLINK-V3
-                         ("15ba", "0003"),  # Olimex ARM-USB-OCD
-                         ("15ba", "002b"),  # Olimex ARM-USB-OCD-H
-                         ("15ba", "0004"),  # Olimex ARM-USB-TINY
-                         ("15ba", "002a"),  # Olimex ARM-USB-TINY-H
-                         ]:
+        if match not in [
+            ("0403", "6010"),  # FT2232C/D/H Dual UART/FIFO IC
+            ("0483", "374f"),  # STLINK-V3
+            ("15ba", "0003"),  # Olimex ARM-USB-OCD
+            ("15ba", "002b"),  # Olimex ARM-USB-OCD-H
+            ("15ba", "0004"),  # Olimex ARM-USB-TINY
+            ("15ba", "002a"),  # Olimex ARM-USB-TINY-H
+        ]:
             return False
 
         return super().filter_match(device)

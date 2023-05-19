@@ -31,26 +31,22 @@ class SigrokCommon(Driver):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool(
-                'sigrok-cli'
-            ) or 'sigrok-cli'
+            self.tool = self.target.env.config.get_tool("sigrok-cli") or "sigrok-cli"
         else:
-            self.tool = 'sigrok-cli'
+            self.tool = "sigrok-cli"
         self.log = logging.getLogger("SigrokDriver")
         self._running = False
 
     def _create_tmpdir(self):
         if isinstance(self.sigrok, NetworkSigrokUSBDevice):
-            self._tmpdir = f'/tmp/labgrid-sigrok-{uuid.uuid1()}'
-            command = self.sigrok.command_prefix + [
-                'mkdir', '-p', self._tmpdir
-            ]
+            self._tmpdir = f"/tmp/labgrid-sigrok-{uuid.uuid1()}"
+            command = self.sigrok.command_prefix + ["mkdir", "-p", self._tmpdir]
             self.log.debug("Tmpdir command: %s", command)
             subprocess.call(
                 command,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,
             )
             self.log.debug("Created tmpdir: %s", self._tmpdir)
             self._local_tmpdir = tempfile.mkdtemp(prefix="labgrid-sigrok-")
@@ -61,15 +57,13 @@ class SigrokCommon(Driver):
 
     def _delete_tmpdir(self):
         if isinstance(self.sigrok, NetworkSigrokUSBDevice):
-            command = self.sigrok.command_prefix + [
-                'rm', '-r', self._tmpdir
-            ]
+            command = self.sigrok.command_prefix + ["rm", "-r", self._tmpdir]
             self.log.debug("Tmpdir command: %s", command)
             subprocess.call(
                 command,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL
+                stderr=subprocess.DEVNULL,
             )
             shutil.rmtree(self._local_tmpdir)
         else:
@@ -94,19 +88,16 @@ class SigrokCommon(Driver):
         return self.sigrok.command_prefix + prefix
 
     @Driver.check_active
-    @step(title='call', args=['args'])
+    @step(title="call", args=["args"])
     def _call_with_driver(self, *args):
         combined = self._get_sigrok_prefix() + list(args)
         self.log.debug("Combined command: %s", " ".join(combined))
         self._process = subprocess.Popen(
-            combined,
-            stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            combined, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
     @Driver.check_active
-    @step(title='call', args=['args'])
+    @step(title="call", args=["args"])
     def _call(self, *args):
         combined = self.sigrok.command_prefix + [self.tool]
         if self.sigrok.channels:
@@ -114,10 +105,7 @@ class SigrokCommon(Driver):
         combined += list(args)
         self.log.debug("Combined command: %s", combined)
         self._process = subprocess.Popen(
-            combined,
-            stdout=subprocess.PIPE,
-            stdin=subprocess.PIPE,
-            stderr=subprocess.PIPE
+            combined, stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE
         )
 
 
@@ -129,6 +117,7 @@ class SigrokDriver(SigrokCommon):
     Args:
         bindings (dict): driver to use with sigrok
     """
+
     bindings = {
         "sigrok": {SigrokUSBDevice, NetworkSigrokUSBDevice, SigrokDevice},
     }
@@ -137,17 +126,12 @@ class SigrokDriver(SigrokCommon):
     def capture(self, filename, samplerate="200k"):
         self._filename = filename
         self._basename = os.path.basename(self._filename)
-        self.log.debug(
-            "Saving to: %s with basename: %s", self._filename, self._basename
-        )
-        cmd = [
-            "-l", "4", "--config", f"samplerate={samplerate}",
-            "--continuous", "-o"
-        ]
+        self.log.debug("Saving to: %s with basename: %s", self._filename, self._basename)
+        cmd = ["-l", "4", "--config", f"samplerate={samplerate}", "--continuous", "-o"]
         filename = os.path.join(self._tmpdir, self._basename)
         cmd.append(filename)
         self._call_with_driver(*cmd)
-        args = self.sigrok.command_prefix + ['test', '-e', filename]
+        args = self.sigrok.command_prefix + ["test", "-e", filename]
 
         while subprocess.call(args):
             sleep(0.1)
@@ -158,9 +142,9 @@ class SigrokDriver(SigrokCommon):
     def stop(self):
         assert self._running
         self._running = False
-        fnames = ['time']
-        fnames.extend(self.sigrok.channels.split(','))
-        csv_filename = f'{os.path.splitext(self._basename)[0]}.csv'
+        fnames = ["time"]
+        fnames.extend(self.sigrok.channels.split(","))
+        csv_filename = f"{os.path.splitext(self._basename)[0]}.csv"
 
         self._process.send_signal(signal.SIGINT)
         stdout, stderr = self._process.communicate()
@@ -169,40 +153,46 @@ class SigrokDriver(SigrokCommon):
 
         # Convert from .sr to .csv
         cmd = [
-            '-i',
-            os.path.join(self._tmpdir, self._basename), '-O', 'csv', '-o',
-            os.path.join(self._tmpdir, csv_filename)
+            "-i",
+            os.path.join(self._tmpdir, self._basename),
+            "-O",
+            "csv",
+            "-o",
+            os.path.join(self._tmpdir, csv_filename),
         ]
         self._call(*cmd)
         self._process.wait()
         stdout, stderr = self._process.communicate()
         self.log.debug("stdout:\n %s\n ----- \n stderr:\n %s", stdout, stderr)
         if isinstance(self.sigrok, NetworkSigrokUSBDevice):
-            subprocess.call([
-                'scp', f'{self.sigrok.host}:{os.path.join(self._tmpdir, self._basename)}',
-                os.path.join(self._local_tmpdir, self._filename)
-            ],
-                            stdin=subprocess.DEVNULL,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
+            subprocess.call(
+                [
+                    "scp",
+                    f"{self.sigrok.host}:{os.path.join(self._tmpdir, self._basename)}",
+                    os.path.join(self._local_tmpdir, self._filename),
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             # get csv from remote host
-            subprocess.call([
-                'scp', f'{self.sigrok.host}:{os.path.join(self._tmpdir, csv_filename)}',
-                os.path.join(self._local_tmpdir, csv_filename)
-            ],
-                            stdin=subprocess.DEVNULL,
-                            stdout=subprocess.DEVNULL,
-                            stderr=subprocess.DEVNULL)
-            with open(os.path.join(self._local_tmpdir,
-                                   csv_filename)) as csv_file:
+            subprocess.call(
+                [
+                    "scp",
+                    f"{self.sigrok.host}:{os.path.join(self._tmpdir, csv_filename)}",
+                    os.path.join(self._local_tmpdir, csv_filename),
+                ],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            with open(os.path.join(self._local_tmpdir, csv_filename)) as csv_file:
                 # skip first 5 lines of the csv output, contains metadata and fieldnames
                 for _ in range(0, 5):
                     next(csv_file)
                 return list(csv.DictReader(csv_file, fieldnames=fnames))
         else:
-            shutil.copyfile(
-                os.path.join(self._tmpdir, self._basename), self._filename
-            )
+            shutil.copyfile(os.path.join(self._tmpdir, self._basename), self._filename)
             with open(os.path.join(self._tmpdir, csv_filename)) as csv_file:
                 # skip first 5 lines of the csv output, contains metadata and fieldnames
                 for _ in range(0, 5):
@@ -211,7 +201,9 @@ class SigrokDriver(SigrokCommon):
 
     @Driver.check_active
     def analyze(self, args, filename=None):
-        annotation_regex = re.compile(r'(?P<startnum>\d+)-(?P<endnum>\d+) (?P<decoder>[\w\-]+): (?P<annotation>[\w\-]+): (?P<data>".*)')  # pylint: disable=line-too-long
+        annotation_regex = re.compile(
+            r'(?P<startnum>\d+)-(?P<endnum>\d+) (?P<decoder>[\w\-]+): (?P<annotation>[\w\-]+): (?P<data>".*)'
+        )  # pylint: disable=line-too-long
         if not filename and self._filename:
             filename = self._filename
         else:
@@ -220,15 +212,14 @@ class SigrokDriver(SigrokCommon):
         args.insert(0, filename)
         if isinstance(args, str):
             args = args.split(" ")
-        args.insert(0, '-i')
+        args.insert(0, "-i")
         args.append("--protocol-decoder-samplenum")
         args.append("-l")
         args.append("4")
         combined = self._get_sigrok_prefix() + args
         output = subprocess.check_output(combined)
         return [
-            match.groupdict()
-            for match in re.finditer(annotation_regex, output.decode("utf-8"))
+            match.groupdict() for match in re.finditer(annotation_regex, output.decode("utf-8"))
         ]
 
 
@@ -241,6 +232,7 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     Args:
         bindings (dict): driver to use with sigrok
     """
+
     bindings = {
         "sigrok": {SigrokUSBSerialDevice, NetworkSigrokUSBSerialDevice},
     }
@@ -266,9 +258,7 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     @Driver.check_active
     @step()
     def off(self):
-        processwrapper.check_output(
-            self._get_sigrok_prefix() + ["--config", "enabled=no", "--set"]
-        )
+        processwrapper.check_output(self._get_sigrok_prefix() + ["--config", "enabled=no", "--set"])
 
     @Driver.check_active
     @step()
@@ -282,7 +272,8 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     def set_voltage_target(self, value):
         if self.max_voltage is not None and value > self.max_voltage:
             raise ValueError(
-                f"Requested voltage target({value}) is higher than configured maximum ({self.max_voltage})")  # pylint: disable=line-too-long
+                f"Requested voltage target({value}) is higher than configured maximum ({self.max_voltage})"
+            )  # pylint: disable=line-too-long
         processwrapper.check_output(
             self._get_sigrok_prefix() + ["--config", f"voltage_target={value:f}", "--set"]
         )
@@ -292,7 +283,8 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     def set_current_limit(self, value):
         if self.max_current is not None and value > self.max_current:
             raise ValueError(
-                f"Requested current limit ({value}) is higher than configured maximum ({self.max_current})")  # pylint: disable=line-too-long
+                f"Requested current limit ({value}) is higher than configured maximum ({self.max_current})"
+            )  # pylint: disable=line-too-long
         processwrapper.check_output(
             self._get_sigrok_prefix() + ["--config", f"current_limit={value:f}", "--set"]
         )
@@ -300,12 +292,10 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     @Driver.check_active
     @step(result=True)
     def get(self):
-        out = processwrapper.check_output(
-            self._get_sigrok_prefix() + ["--get", "enabled"]
-        )
-        if out == b'true':
+        out = processwrapper.check_output(self._get_sigrok_prefix() + ["--get", "enabled"])
+        if out == b"true":
             return True
-        elif out == b'false':
+        elif out == b"false":
             return False
 
         raise ExecutionError(f"Unkown enable status {out}")
@@ -313,19 +303,17 @@ class SigrokPowerDriver(SigrokCommon, PowerResetMixin, PowerProtocol):
     @Driver.check_active
     @step(result=True)
     def measure(self):
-        out = processwrapper.check_output(
-            self._get_sigrok_prefix() + ["--show"]
-        )
+        out = processwrapper.check_output(self._get_sigrok_prefix() + ["--show"])
         res = {}
         for line in out.splitlines():
             line = line.strip()
-            if b':' not in line:
+            if b":" not in line:
                 continue
-            k, v = line.split(b':', 1)
-            if k == b'voltage':
-                res['voltage'] = float(v)
-            elif k == b'current':
-                res['current'] = float(v)
+            k, v = line.split(b":", 1)
+            if k == b"voltage":
+                res["voltage"] = float(v)
+            elif k == b"current":
+                res["current"] = float(v)
         if len(res) != 2:
             raise ExecutionError(f"Cannot parse --show output {out}")
         return res

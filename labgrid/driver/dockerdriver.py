@@ -42,24 +42,29 @@ class DockerDriver(PowerProtocol, Driver):
                                  service that the docker container exposes.
 
     """
+
     bindings = {"docker_daemon": {"DockerDaemon"}}
-    image_uri = attr.ib(default=None, validator=attr.validators.optional(
-        attr.validators.instance_of(str)))
-    command = attr.ib(default=None, validator=attr.validators.optional(
-        attr.validators.instance_of(str)))
-    volumes = attr.ib(default=None, validator=attr.validators.optional(
-        attr.validators.instance_of(list)))
-    container_name = attr.ib(default=None, validator=attr.validators.optional(
-        attr.validators.instance_of(str)))
+    image_uri = attr.ib(
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
+    command = attr.ib(
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
+    volumes = attr.ib(
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(list))
+    )
+    container_name = attr.ib(
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     environment = attr.ib(
-        default=None, validator=attr.validators.optional(
-            attr.validators.instance_of(list)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(list))
+    )
     host_config = attr.ib(
-        default=None, validator=attr.validators.optional(
-            attr.validators.instance_of(dict)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(dict))
+    )
     network_services = attr.ib(
-        default=None, validator=attr.validators.optional(
-            attr.validators.instance_of(list)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(list))
+    )
 
     def __attrs_post_init__(self):
         self.logger = logging.getLogger(f"{self}({self.target})")
@@ -68,15 +73,15 @@ class DockerDriver(PowerProtocol, Driver):
         self._container = None
 
     def on_activate(self):
-        """ On activation:
+        """On activation:
         1. Import docker module (_client and _container remain available)
         2. Connect to the docker daemon
         3. Pull requested image from docker registry if needed
         4. Create the new container according to parameters from conf
         """
         import docker
-        self._client = docker.DockerClient(
-            base_url=self.docker_daemon.docker_daemon_url)
+
+        self._client = docker.DockerClient(base_url=self.docker_daemon.docker_daemon_url)
         self._client.images.pull(self.image_uri)
         self._container = self._client.api.create_container(
             self.image_uri,
@@ -85,25 +90,24 @@ class DockerDriver(PowerProtocol, Driver):
             name=self.container_name,
             environment=self.environment,
             labels={
-                DockerConstants.DOCKER_LG_CLEANUP_LABEL:
-                DockerConstants.DOCKER_LG_CLEANUP_TYPE_AUTO},
-            host_config=self._client.api.create_host_config(
-                **self.host_config))
+                DockerConstants.DOCKER_LG_CLEANUP_LABEL: DockerConstants.DOCKER_LG_CLEANUP_TYPE_AUTO
+            },
+            host_config=self._client.api.create_host_config(**self.host_config),
+        )
 
     def on_deactivate(self):
-        """ Remove container after use"""
-        self._client.api.remove_container(self._container.get('Id'),
-                                          force=True)
+        """Remove container after use"""
+        self._client.api.remove_container(self._container.get("Id"), force=True)
         self._client = None
         self._container = None
 
     def on(self):
-        """ Start the container created during activation """
-        self._client.api.start(container=self._container.get('Id'))
+        """Start the container created during activation"""
+        self._client.api.start(container=self._container.get("Id"))
 
     def off(self):
-        """ Stop the container created during activation """
-        self._client.api.stop(container=self._container.get('Id'))
+        """Stop the container created during activation"""
+        self._client.api.stop(container=self._container.get("Id"))
 
     def cycle(self):
         """Cycle the docker container by stopping and starting it"""

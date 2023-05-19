@@ -22,6 +22,7 @@ class USBAudioInputDriver(Driver):
     crating a symlink:
     ln -s /usr/lib/python3/dist-packages/gi $VENV/lib/python*/site-packages/
     """
+
     bindings = {
         "res": {"USBAudioInput", "NetworkUSBAudioInput"},
     }
@@ -33,9 +34,13 @@ class USBAudioInputDriver(Driver):
 
     def _get_pipeline(self):
         return [
-            "alsasrc", f"device={self.res.alsa_name}", "!",
-            "matroskamux", "streamable=true", "!",
-            "fdsink"
+            "alsasrc",
+            f"device={self.res.alsa_name}",
+            "!",
+            "matroskamux",
+            "streamable=true",
+            "!",
+            "fdsink",
         ]
 
     def _prepare(self):
@@ -43,9 +48,10 @@ class USBAudioInputDriver(Driver):
             return
 
         import gi
-        gi.require_version('Gst', '1.0')
-        gi.require_version('GLib', '2.0')
-        gi.require_version('GObject', '2.0')
+
+        gi.require_version("Gst", "1.0")
+        gi.require_version("GLib", "2.0")
+        gi.require_version("GObject", "2.0")
         from gi.repository import GLib, GObject, Gst
 
         self._GLib = GLib
@@ -61,10 +67,10 @@ class USBAudioInputDriver(Driver):
                 self._logger = logger
 
                 assert sender.poll() is None, "sender must be running"
-                src = Gst.ElementFactory.make('fdsrc')
-                src.set_property('fd', sender.stdout.fileno())
-                demux = Gst.ElementFactory.make('matroskademux')
-                convert = Gst.ElementFactory.make('audioconvert')
+                src = Gst.ElementFactory.make("fdsrc")
+                src.set_property("fd", sender.stdout.fileno())
+                demux = Gst.ElementFactory.make("matroskademux")
+                convert = Gst.ElementFactory.make("audioconvert")
 
                 self.add(src, demux, convert)
 
@@ -121,9 +127,9 @@ class USBAudioInputDriver(Driver):
 
         src = self.create_gst_src()
 
-        pipe = Gst.Pipeline.new('dynamic')
-        level = Gst.ElementFactory.make('level')
-        sink = Gst.ElementFactory.make('fakesink')
+        pipe = Gst.Pipeline.new("dynamic")
+        level = Gst.ElementFactory.make("level")
+        sink = Gst.ElementFactory.make("fakesink")
 
         pipe.add(src, level, sink)
 
@@ -144,21 +150,23 @@ class USBAudioInputDriver(Driver):
                 self.logger.error("Error: %s: %s", err, debug)
                 loop.quit()
             elif t == Gst.MessageType.ELEMENT:
-                self.logger.debug('peak %s', message.get_structure()['peak'])
-                self.logger.debug('rms %s', message.get_structure()['rms'])
+                self.logger.debug("peak %s", message.get_structure()["peak"])
+                self.logger.debug("rms %s", message.get_structure()["rms"])
                 stats.update(dict(message.get_structure()))
                 loop.quit()
             else:
-                self.logger.debug('gst message %s', t)
+                self.logger.debug("gst message %s", t)
             return True
+
         bus = pipe.get_bus()
         bus.add_signal_watch()
         bus.connect("message", bus_call, loop)
 
         def timeout(*args):
             self.logger.error("loop timed out")
-            stats['timeout'] = True
+            stats["timeout"] = True
             loop.quit()
+
         GLib.timeout_add_seconds(15, timeout, None)
 
         # start play back and listen to events
@@ -168,7 +176,7 @@ class USBAudioInputDriver(Driver):
         finally:
             pipe.set_state(Gst.State.NULL)
 
-        if stats.get('timeout'):
+        if stats.get("timeout"):
             raise TimeoutError("no data received before timeout")
         return stats
 

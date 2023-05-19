@@ -9,9 +9,8 @@ from .config import Config
 @attr.s(eq=False)
 class Environment:
     """An environment encapsulates targets."""
-    config_file = attr.ib(
-        default="config.yaml", validator=attr.validators.instance_of(str)
-    )
+
+    config_file = attr.ib(default="config.yaml", validator=attr.validators.instance_of(str))
     interact = attr.ib(default=input, repr=False)
 
     def __attrs_post_init__(self):
@@ -24,7 +23,7 @@ class Environment:
             from importlib.machinery import SourceFileLoader
             import sys
 
-            if user_import.endswith('.py'):
+            if user_import.endswith(".py"):
                 module_name = os.path.basename(user_import)[:-3]
                 loader = SourceFileLoader(module_name, user_import)
                 spec = importlib.util.spec_from_loader(loader.name, loader)
@@ -35,7 +34,7 @@ class Environment:
                 module = importlib.import_module(user_import)
             sys.modules[module_name] = module
 
-    def get_target(self, role: str = 'main') -> Optional[Target]:
+    def get_target(self, role: str = "main") -> Optional[Target]:
         """Returns the specified target or None if not found.
 
         Each target is initialized as needed.
@@ -57,7 +56,7 @@ class Environment:
     def get_target_features(self):
         flags = set()
         for value in self.config.get_targets().values():
-            flags = flags | set(value.get('features', {}))
+            flags = flags | set(value.get("features", {}))
         return flags
 
     def cleanup(self):

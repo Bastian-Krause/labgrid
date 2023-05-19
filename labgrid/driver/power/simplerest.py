@@ -12,6 +12,7 @@
 
 import requests
 
+
 def power_set(host, port, index, value):
     assert port is None
 
@@ -20,11 +21,12 @@ def power_set(host, port, index, value):
     r = requests.get(host.format(value=value, index=index))
     r.raise_for_status()
 
+
 def power_get(host, port, index):
     assert port is None
 
     index = int(index)
     # remove trailing /
-    r = requests.get(host.format(value='', index=index).rstrip('/'))
+    r = requests.get(host.format(value="", index=index).rstrip("/"))
     r.raise_for_status()
-    return r.text == '1'
+    return r.text == "1"

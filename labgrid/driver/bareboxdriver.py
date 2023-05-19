@@ -30,7 +30,10 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         password (str): optional, password to use for access to the shell
         login_timeout (int): optional, timeout for access to the shell
     """
-    bindings = {"console": ConsoleProtocol, }
+
+    bindings = {
+        "console": ConsoleProtocol,
+    }
     prompt = attr.ib(default="", validator=attr.validators.instance_of(str))
     autoboot = attr.ib(default="stop autoboot", validator=attr.validators.instance_of(str))
     interrupt = attr.ib(default="\n", validator=attr.validators.instance_of(str))
@@ -59,11 +62,13 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         self._status = 0
 
     @Driver.check_active
-    @step(args=['cmd'])
+    @step(args=["cmd"])
     def run(self, cmd: str, *, timeout: int = 30):
         return self._run(cmd, timeout=timeout)
 
-    def _run(self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"):  # pylint: disable=unused-argument,line-too-long
+    def _run(
+        self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"
+    ):  # pylint: disable=unused-argument,line-too-long
         """
         Runs the specified command on the shell and returns the output.
 
@@ -78,14 +83,14 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         marker = gen_marker()
         # hide marker from expect
         hidden_marker = f'"{marker[:4]}""{marker[4:]}"'
-        cmp_command = f'''echo -o /cmd {shlex.quote(cmd)}; echo {hidden_marker}; sh /cmd; echo {hidden_marker} $?;'''  # pylint: disable=line-too-long
+        cmp_command = f"""echo -o /cmd {shlex.quote(cmd)}; echo {hidden_marker}; sh /cmd; echo {hidden_marker} $?;"""  # pylint: disable=line-too-long
         if self._status == 1:
             self.console.sendline(cmp_command)
             _, _, match, _ = self.console.expect(
-                rf'{marker}(.*){marker}\s+(\d+)\s+.*{self.prompt}',
-                timeout=timeout)
+                rf"{marker}(.*){marker}\s+(\d+)\s+.*{self.prompt}", timeout=timeout
+            )
             # Remove VT100 Codes and split by newline
-            data = re_vt100.sub('', match.group(1).decode('utf-8')).split('\r\n')[1:-1]
+            data = re_vt100.sub("", match.group(1).decode("utf-8")).split("\r\n")[1:-1]
             self.logger.debug("Received Data: %s", data)
             # Get exit code
             exitcode = int(match.group(2))
@@ -96,8 +101,7 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
     @Driver.check_active
     @step()
     def reset(self):
-        """Reset the board via a CPU reset
-        """
+        """Reset the board via a CPU reset"""
         self._status = 0
         self.console.sendline("reset")
         self._await_prompt()
@@ -144,10 +148,7 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
 
         expectations = [self.prompt, self.autoboot, "Password: ", TIMEOUT]
         while True:
-            index, before, _, _ = self.console.expect(
-                expectations,
-                timeout=2
-            )
+            index, before, _, _ = self.console.expect(expectations, timeout=2)
 
             if index == 0:
                 # we got a prompt. no need for any further action to activate
@@ -157,7 +158,7 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
 
             elif index == 1:
                 # we need to interrupt autoboot
-                self.console.write(self.interrupt.encode('ASCII'))
+                self.console.write(self.interrupt.encode("ASCII"))
 
             elif index == 2:
                 # we need to enter the password

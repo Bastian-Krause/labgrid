@@ -32,7 +32,10 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         boot_timeout (int): optional, timeout for initial Linux Kernel version detection
 
     """
-    bindings = {"console": ConsoleProtocol, }
+
+    bindings = {
+        "console": ConsoleProtocol,
+    }
     prompt = attr.ib(default="", validator=attr.validators.instance_of(str))
     autoboot = attr.ib(default="stop autoboot", validator=attr.validators.instance_of(str))
     password = attr.ib(default="", validator=attr.validators.instance_of(str))
@@ -53,6 +56,7 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
 
         if self.boot_expression:
             import warnings
+
             warnings.warn("boot_expression is deprecated and will be ignored", DeprecationWarning)
 
     def on_activate(self):
@@ -70,7 +74,9 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         """
         self._status = 0
 
-    def _run(self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"):  # pylint: disable=unused-argument,line-too-long
+    def _run(
+        self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"
+    ):  # pylint: disable=unused-argument,line-too-long
         # TODO: use codec, decodeerrors
         # TODO: Shell Escaping for the U-Boot Shell
         marker = gen_marker()
@@ -79,13 +85,15 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
             self.console.sendline(cmp_command)
             _, before, _, _ = self.console.expect(self.prompt, timeout=timeout)
             # Remove VT100 Codes and split by newline
-            data = re_vt100.sub(
-                '', before.decode('utf-8'), count=1000000
-            ).replace("\r", "").split("\n")
+            data = (
+                re_vt100.sub("", before.decode("utf-8"), count=1000000)
+                .replace("\r", "")
+                .split("\n")
+            )
             self.logger.debug("Received Data: %s", data)
             # Remove first element, the invoked cmd
-            data = data[data.index(marker) + 1:]
-            data = data[:data.index(marker)]
+            data = data[data.index(marker) + 1 :]
+            data = data[: data.index(marker)]
             exitcode = int(data[-1])
             del data[-1]
             return (data, [], exitcode)
@@ -93,7 +101,7 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         return None
 
     @Driver.check_active
-    @step(args=['cmd'], result=True)
+    @step(args=["cmd"], result=True)
     def run(self, cmd, timeout=30):
         """
         Runs the specified command on the shell and returns the output.
@@ -135,8 +143,7 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
     @Driver.check_active
     @step()
     def reset(self):
-        """Reset the board via a CPU reset
-        """
+        """Reset the board via a CPU reset"""
         self._status = 0
         self.console.sendline("reset")
         self._await_prompt()
@@ -157,16 +164,13 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
 
         expectations = [self.prompt, self.autoboot, self.password_prompt, TIMEOUT]
         while True:
-            index, before, _, _ = self.console.expect(
-                expectations,
-                timeout=2
-            )
+            index, before, _, _ = self.console.expect(expectations, timeout=2)
             if index == 0:
                 self._status = 1
                 break
 
             elif index == 1:
-                self.console.write(self.interrupt.encode('ASCII'))
+                self.console.write(self.interrupt.encode("ASCII"))
 
             elif index == 2:
                 if not self.password:
@@ -203,7 +207,7 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         self.console.expect(self.bootstring, timeout=self.boot_timeout)
 
     @Driver.check_active
-    @step(args=['name'])
+    @step(args=["name"])
     def boot(self, name: str = ""):
         """Boot the default or a specific boot entry
 

@@ -7,7 +7,6 @@ from .common import Driver
 from ..util.managedfile import ManagedFile
 
 
-
 @attr.s(eq=False)
 class BaseProviderDriver(Driver):
     def __attrs_post_init__(self):
@@ -22,7 +21,7 @@ class BaseProviderDriver(Driver):
         }
 
     @Driver.check_active
-    @step(args=['filename'], result=True)
+    @step(args=["filename"], result=True)
     def stage(self, filename):
         symlink = os.path.join(self.provider.internal, os.path.basename(filename))
         assert symlink.startswith(self.provider.internal)
@@ -30,7 +29,7 @@ class BaseProviderDriver(Driver):
         mf = ManagedFile(filename, self.provider)
         mf.sync_to_resource(symlink=symlink)
 
-        return self.provider.external + symlink[len(self.provider.internal):]
+        return self.provider.external + symlink[len(self.provider.internal) :]
 
 
 @target_factory.reg_driver

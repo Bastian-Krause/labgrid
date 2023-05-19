@@ -17,14 +17,16 @@ import json
 
 import requests
 
-def power_set(host:str, port:int, index:int=0, value:bool=True):
+
+def power_set(host: str, port: int, index: int = 0, value: bool = True):
     assert not port
     turn = "on" if value else "off"
-    r = requests.post(f"{host}/relay/{index}", data={'turn': turn})
+    r = requests.post(f"{host}/relay/{index}", data={"turn": turn})
     r.raise_for_status()
 
-def power_get(host:str, port:int, index:int):
+
+def power_get(host: str, port: int, index: int):
     assert not port
     r = requests.get(f"{host}/relay/{index}")
     r.raise_for_status()
-    return json.loads(r.text)['ison']
+    return json.loads(r.text)["ison"]

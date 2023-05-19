@@ -35,7 +35,7 @@ class Driver(BindingMixin):
             Int: value of the priority if it is found, 0 otherwise.
         """
         for cls in self.__class__.__mro__:
-            prios = getattr(cls, 'priorities', {})
+            prios = getattr(cls, "priorities", {})
             # we found a matching parent priorities attribute with the matching protocol
             if prios and protocol in prios:
                 return prios.get(protocol)
@@ -67,6 +67,7 @@ class Driver(BindingMixin):
         """
         return False
 
+
 def check_file(filename, *, command_prefix=[]):
-    if subprocess.call(command_prefix + ['test', '-r', filename]) != 0:
+    if subprocess.call(command_prefix + ["test", "-r", filename]) != 0:
         raise ExecutionError(f"File {filename} is not readable")

@@ -17,7 +17,7 @@ class ManagedFileError(Exception):
 
 @attr.s
 class ManagedFile:
-    """ The ManagedFile allows the synchronisation of a file to a remote host.
+    """The ManagedFile allows the synchronisation of a file to a remote host.
     It has to be created with the to be synced file and the target resource as
     argument:
 
@@ -28,9 +28,9 @@ class ManagedFile:
 
     Synchronisation is done with the sync_to_resource method.
     """
+
     local_path = attr.ib(
-        validator=attr.validators.instance_of(str),
-        converter=lambda x: os.path.abspath(str(x))
+        validator=attr.validators.instance_of(str), converter=lambda x: os.path.abspath(str(x))
     )
     resource = attr.ib(
         validator=attr.validators.instance_of(Resource),
@@ -56,16 +56,15 @@ class ManagedFile:
             conn = sshmanager.open(host)
 
             if self._on_nfs(conn):
-                self.logger.info("File %s is accessible on %s, skipping copy", self.local_path, host)
+                self.logger.info(
+                    "File %s is accessible on %s, skipping copy", self.local_path, host
+                )
                 self.rpath = os.path.dirname(self.local_path) + "/"
             else:
                 self.rpath = f"/var/cache/labgrid/{get_user()}/{self.get_hash()}/"
                 self.logger.info("Synchronizing %s to %s", self.local_path, host)
                 conn.run_check(f"mkdir -p {self.rpath}")
-                conn.put_file(
-                    self.local_path,
-                    f"{self.rpath}{os.path.basename(self.local_path)}"
-                )
+                conn.put_file(self.local_path, f"{self.rpath}{os.path.basename(self.local_path)}")
 
             if symlink is not None:
                 self.logger.info("Linking")
@@ -77,7 +76,6 @@ class ManagedFile:
                     f"ln --symbolic --force --no-dereference {self.rpath}{os.path.basename(self.local_path)} {symlink}"  # pylint: disable=line-too-long
                 )
 
-
     def _on_nfs(self, conn):
         if self._on_nfs_cached is not None:
             return self._on_nfs_cached
@@ -88,24 +86,25 @@ class ManagedFile:
         self._on_nfs_cached = False
 
         fmt = "inode=%i,size=%s,modified=%Y"
-        local = subprocess.run(["stat", "--format", fmt, self.local_path],
-                               stdout=subprocess.PIPE)
+        local = subprocess.run(["stat", "--format", fmt, self.local_path], stdout=subprocess.PIPE)
         if local.returncode != 0:
             self.logger.debug("local: stat: unsuccessful error code %d", local.returncode)
             return False
 
-        remote = conn.run(f"stat --format '{fmt}' {self.local_path}",
-                          decodeerrors="backslashreplace")
+        remote = conn.run(
+            f"stat --format '{fmt}' {self.local_path}", decodeerrors="backslashreplace"
+        )
         if remote[2] != 0:
             self.logger.debug("remote: stat: unsuccessful error code %d", remote[2])
             return False
 
-        localout = local.stdout.decode("utf-8", "backslashreplace").split('\n')
-        localout.pop() # remove trailing empty element
+        localout = local.stdout.decode("utf-8", "backslashreplace").split("\n")
+        localout.pop()  # remove trailing empty element
 
         if remote[0] != localout:
-            self.logger.debug("state: local (%s) and remote (%s) output don't match",
-                              remote[0], localout)
+            self.logger.debug(
+                "state: local (%s) and remote (%s) output don't match", remote[0], localout
+            )
             return False
 
         self.rpath = os.path.dirname(self.local_path) + "/"
@@ -135,8 +134,8 @@ class ManagedFile:
             return self.hash
 
         hasher = hashlib.sha256()
-        with open(self.local_path, 'rb') as f:
-            for block in iter(lambda: f.read(1048576), b''):
+        with open(self.local_path, "rb") as f:
+            for block in iter(lambda: f.read(1048576), b""):
                 hasher.update(block)
         self.hash = hasher.hexdigest()
 

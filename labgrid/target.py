@@ -8,7 +8,12 @@ import attr
 
 from .binding import BindingError, BindingState
 from .driver import Driver
-from .exceptions import NoSupplierFoundError, NoDriverFoundError, NoResourceFoundError, NoStrategyFoundError
+from .exceptions import (
+    NoSupplierFoundError,
+    NoDriverFoundError,
+    NoResourceFoundError,
+    NoStrategyFoundError,
+)
 from .resource import Resource
 from .strategy import Strategy
 from .util import Timeout
@@ -55,12 +60,15 @@ class Target:
                 deactivated = self.deactivate(resource)
                 deactivated.remove(resource)
                 if deactivated:
-                    self.log.info("deactivating unavailable resource %s used by %s",
+                    self.log.info(
+                        "deactivating unavailable resource %s used by %s",
                         resource.display_name,
-                        ", ".join(d.display_name for d in deactivated)
+                        ", ".join(d.display_name for d in deactivated),
                     )
                 else:
-                    self.log.debug("deactivating unavailable resource %s (unused)", resource.display_name)  # pylint: disable=line-too-long
+                    self.log.debug(
+                        "deactivating unavailable resource %s (unused)", resource.display_name
+                    )  # pylint: disable=line-too-long
 
     def await_resources(self, resources, timeout=None, avail=True):
         """
@@ -99,7 +107,7 @@ class Target:
         if waiting:
             raise NoResourceFoundError(
                 f"Not all resources are {'available' if avail else 'unavailable'}: {waiting}",
-                filter=waiting
+                filter=waiting,
             )
 
         self.update_resources()
@@ -143,9 +151,7 @@ class Target:
                     f"no {cls} resource{name_msg} found in {self}, matching resources with other names: {other_names}"  # pylint: disable=line-too-long
                 )
 
-            raise NoResourceFoundError(
-                f"no {cls} resource{name_msg} found in {self}"
-            )
+            raise NoResourceFoundError(f"no {cls} resource{name_msg} found in {self}")
         elif len(found) > 1:
             raise NoResourceFoundError(
                 f"multiple resources matching {cls} found in {self}", found=found
@@ -176,8 +182,12 @@ class Target:
             if other_names:
                 raise NoDriverFoundError(
                     "no {active}{cls} driver{name} found in {target}, matching resources with other names: {other_names}".format(  # pylint: disable=line-too-long
-                        active="active " if active else "", cls=cls, name=name_msg, target=self,
-                        other_names=other_names)
+                        active="active " if active else "",
+                        cls=cls,
+                        name=name_msg,
+                        target=self,
+                        other_names=other_names,
+                    )
                 )
 
             raise NoDriverFoundError(
@@ -200,7 +210,8 @@ class Target:
             else:
                 raise NoDriverFoundError(
                     "multiple {active}drivers matching {cls} found in {target} with the same priorities".format(  # pylint: disable=line-too-long
-                        active="active " if active else "", cls=cls, target=self)
+                        active="active " if active else "", cls=cls, target=self
+                    )
                 )
         if activate:
             self.activate(found[0])
@@ -270,10 +281,8 @@ class Target:
             cls, name = key
         if isinstance(cls, str):
             cls = target_factory.class_from_string(cls)
-        if not issubclass(cls, (Driver, abc.ABC)): # all Protocols derive from ABC
-            raise NoDriverFoundError(
-                f"invalid driver class {cls}"
-            )
+        if not issubclass(cls, (Driver, abc.ABC)):  # all Protocols derive from ABC
+            raise NoDriverFoundError(f"invalid driver class {cls}")
 
         return self.get_active_driver(cls, name=name)
 
@@ -288,9 +297,7 @@ class Target:
         Bind the resource to this target.
         """
         if resource.state is not BindingState.idle:
-            raise BindingError(
-                f"{resource} is not in state {BindingState.idle}"
-            )
+            raise BindingError(f"{resource} is not in state {BindingState.idle}")
 
         # consistency check
         assert isinstance(resource, Resource)
@@ -312,9 +319,7 @@ class Target:
         Currently, we only support binding all suppliers at once.
         """
         if client.state is not BindingState.idle:
-            raise BindingError(
-                f"{client} is not in state {BindingState.idle}"
-            )
+            raise BindingError(f"{client} is not in state {BindingState.idle}")
 
         # consistency check
         assert isinstance(client, Driver)
@@ -357,7 +362,9 @@ class Target:
                         suppliers.append(
                             self.get_resource(requirement, name=supplier_name, wait_avail=False),
                         )
-                    elif issubclass(requirement, (Driver, abc.ABC)): # all Protocols derive from ABC
+                    elif issubclass(
+                        requirement, (Driver, abc.ABC)
+                    ):  # all Protocols derive from ABC
                         suppliers.append(
                             self.get_driver(requirement, name=supplier_name, activate=False),
                         )
@@ -375,7 +382,9 @@ class Target:
                         f"no supplier matching {requirements} found in {self} (errors: {errors})"
                     )
             elif len(suppliers) > 1:
-                raise NoSupplierFoundError(f"conflicting suppliers matching {requirements} found in target {self}")  # pylint: disable=line-too-long
+                raise NoSupplierFoundError(
+                    f"conflicting suppliers matching {requirements} found in target {self}"
+                )  # pylint: disable=line-too-long
             else:
                 supplier = suppliers[0]
             if supplier is not None and (requirement, supplier) in bound_req_pairs:
@@ -395,9 +404,7 @@ class Target:
 
         # make sure drivers consume all given bindings
         if mapping and not isinstance(client, Strategy):
-            raise BindingError(
-                f"{client} got unexpected bindings: {list(mapping.keys())}"
-            )
+            raise BindingError(f"{client} got unexpected bindings: {list(mapping.keys())}")
 
         # update relationship in both directions
         self.drivers.append(client)
@@ -443,9 +450,7 @@ class Target:
             return  # nothing to do
 
         if client.state is not BindingState.bound:
-            raise BindingError(
-                f"{client} is not in state {BindingState.bound}"
-            )
+            raise BindingError(f"{client} is not in state {BindingState.bound}")
 
         # consistency check
         assert client in self.resources or client in self.drivers
@@ -479,12 +484,10 @@ class Target:
         assert client is not None
 
         if client.state is BindingState.bound:
-            return [] # nothing to do
+            return []  # nothing to do
 
         if client.state is not BindingState.active:
-            raise BindingError(
-                f"{client} is not in state {BindingState.active}"
-            )
+            raise BindingError(f"{client} is not in state {BindingState.active}")
 
         # consistency check
         assert client in self.resources or client in self.drivers
@@ -508,10 +511,14 @@ class Target:
         try:
             self.cleanup()
         except Exception as e:
-            print("An exception occured during cleanup, call the cleanup() "
-                  "method on targets yourself to handle exceptions explictly.", file=sys.stderr)
+            print(
+                "An exception occured during cleanup, call the cleanup() "
+                "method on targets yourself to handle exceptions explictly.",
+                file=sys.stderr,
+            )
             print(f"Error: {e}", file=sys.stderr)
             import traceback
+
             traceback.print_exc(file=sys.stderr)
 
     def export(self):
@@ -548,7 +555,6 @@ class Target:
                 assert isinstance(v, str), f"value {v} for key {k} from {driver} is not a string"
                 export_vars[f"LG__{name}_{k}".upper()] = v
         return export_vars
-
 
     def cleanup(self):
         """Clean up connected drivers and resources in reversed order"""

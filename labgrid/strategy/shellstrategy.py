@@ -17,6 +17,7 @@ class Status(enum.Enum):
 @attr.s(eq=False)
 class ShellStrategy(Strategy):
     """ShellStrategy - Strategy to switch to shell"""
+
     bindings = {
         "power": "PowerProtocol",
         "console": "ConsoleProtocol",
@@ -28,7 +29,7 @@ class ShellStrategy(Strategy):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
 
-    @step(args=['status'])
+    @step(args=["status"])
     def transition(self, status, *, step):  # pylint: disable=redefined-outer-name
         if not isinstance(status, Status):
             status = Status[status]
@@ -48,12 +49,10 @@ class ShellStrategy(Strategy):
             self.target.activate(self.shell)
             self.shell.run("systemctl is-system-running --wait")
         else:
-            raise StrategyError(
-                f"no transition found from {self.status} to {status}"
-            )
+            raise StrategyError(f"no transition found from {self.status} to {status}")
         self.status = status
 
-    @step(args=['status'])
+    @step(args=["status"])
     def force(self, status, *, step):  # pylint: disable=redefined-outer-name
         if not isinstance(status, Status):
             status = Status[status]

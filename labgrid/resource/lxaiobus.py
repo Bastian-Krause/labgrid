@@ -12,15 +12,15 @@ from .common import ManagedResource, ResourceManager
 class LXAIOBusNodeManager(ResourceManager):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
-        self._requests = import_module('requests')
+        self._requests = import_module("requests")
 
-        self.log = logging.getLogger('LXAIOBusNodeManager')
+        self.log = logging.getLogger("LXAIOBusNodeManager")
 
         self._last = 0.0
 
     def _get_nodes(self, host):
         try:
-            r = self._requests.get(f'http://{host}/nodes/')
+            r = self._requests.get(f"http://{host}/nodes/")
             r.raise_for_status()
             j = r.json()
             return j["result"]
@@ -29,7 +29,7 @@ class LXAIOBusNodeManager(ResourceManager):
             return []
 
     def poll(self):
-        if monotonic()-self._last < 2:
+        if monotonic() - self._last < 2:
             return  # ratelimit requests
         self._last = monotonic()
         hosts = {r.host for r in self.resources}
@@ -45,6 +45,7 @@ class LXAIOBusNode(ManagedResource):
     Args:
         host (str): hostname of the owserver e.g. localhost:4304
         node (str): node name e.g. EthMux-5c12ca8b"""
+
     manager_cls = LXAIOBusNodeManager
 
     host = attr.ib(validator=attr.validators.instance_of(str))
@@ -63,5 +64,6 @@ class LXAIOBusPIO(LXAIOBusNode):
     Args:
         pin (str): pin label e.g. OUT0
         invert (bool): optional, whether the logic level is inverted (active-low)"""
+
     pin = attr.ib(validator=attr.validators.instance_of(str))
     invert = attr.ib(default=False, validator=attr.validators.instance_of(bool))

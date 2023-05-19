@@ -3,6 +3,7 @@ import attr
 from ..factory import target_factory
 from .common import Resource
 
+
 @target_factory.reg_resource
 @attr.s(eq=False)
 class SigrokDevice(Resource):
@@ -13,8 +14,8 @@ class SigrokDevice(Resource):
         driver (str): driver to use with sigrok
         channels (str): a sigrok channel mapping as described in the sigrok-cli man page
     """
+
     driver = attr.ib(default="demo")
     channels = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )

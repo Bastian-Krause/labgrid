@@ -13,15 +13,20 @@ from labgrid.driver import SerialDriver
 from labgrid.resource import RawSerialPort, NetworkSerialPort
 from labgrid.driver.fake import FakeConsoleDriver
 
+
 @pytest.fixture(scope="session")
 def curses_init():
-    """ curses only reads the terminfo DB once on the first import, so make
+    """curses only reads the terminfo DB once on the first import, so make
     sure we prime it correctly."""
     try:
         import curses
+
         curses.setupterm("linux")
     except ModuleNotFoundError:
-        logging.warning("curses module not found, not setting up a default terminal – tests may fail")
+        logging.warning(
+            "curses module not found, not setting up a default terminal – tests may fail"
+        )
+
 
 def keep_reading(spawn):
     "The output from background processes must be read to avoid blocking them."
@@ -41,20 +46,20 @@ def keep_reading(spawn):
 class Prefixer:
     def __init__(self, wrapped, prefix):
         self.__wrapped = wrapped
-        self.__prefix = prefix.encode()+b": "
+        self.__prefix = prefix.encode() + b": "
         self.__continuation = False
 
     def write(self, data):
-        if data[-1:] == b'\n':
+        if data[-1:] == b"\n":
             continuation = False
             data = data[:-1]
         else:
             continuation = True
-        data = data.replace(b'\n', b'\n'+self.__prefix)
+        data = data.replace(b"\n", b"\n" + self.__prefix)
         if not self.__continuation:
-            data = self.__prefix+data
+            data = self.__prefix + data
         if not continuation:
-            data += b'\n'
+            data += b"\n"
         self.__continuation = continuation
         self.__wrapped.write(data)
 
@@ -62,70 +67,77 @@ class Prefixer:
         return getattr(self.__wrapped, name)
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def target():
-    return Target('Test')
+    return Target("Test")
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def target_with_fakeconsole():
-    t = Target('dummy')
+    t = Target("dummy")
     cp = FakeConsoleDriver(t, "console")
     return t
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def serial_port(target):
-    return RawSerialPort(target, 'serial', '/dev/test')
+    return RawSerialPort(target, "serial", "/dev/test")
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def serial_rfc2711_port(target):
-    return NetworkSerialPort(target, 'rfc2711', host='localhost', port=8888)
+    return NetworkSerialPort(target, "rfc2711", host="localhost", port=8888)
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def serial_raw_port(target):
-    return NetworkSerialPort(target, 'serialraw', host='localhost', port=8888, protocol="raw")
+    return NetworkSerialPort(target, "serialraw", host="localhost", port=8888, protocol="raw")
 
 
-@pytest.fixture(scope='function')
+@pytest.fixture(scope="function")
 def serial_driver(target, serial_port, mocker):
-    m = mocker.patch('serial.Serial')
-    s = SerialDriver(target, 'serial')
+    m = mocker.patch("serial.Serial")
+    s = SerialDriver(target, "serial")
     target.activate(s)
     return s
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def serial_driver_no_name(target, serial_port, mocker):
-    m = mocker.patch('serial.Serial')
+    m = mocker.patch("serial.Serial")
     s = SerialDriver(target, None)
     target.activate(s)
     return s
 
-@pytest.fixture(scope='function')
-def crossbar_config(tmpdir, pytestconfig):
-    crossbar_config = '.crossbar/config-anonymous.yaml'
 
-    pytestconfig.rootdir.join(crossbar_config).copy(tmpdir.mkdir('.crossbar'))
+@pytest.fixture(scope="function")
+def crossbar_config(tmpdir, pytestconfig):
+    crossbar_config = ".crossbar/config-anonymous.yaml"
+
+    pytestconfig.rootdir.join(crossbar_config).copy(tmpdir.mkdir(".crossbar"))
     crossbar_config = tmpdir.join(crossbar_config)
 
     # crossbar runs labgrid's coordinator component as a guest, record its coverage
-    if pytestconfig.pluginmanager.get_plugin('pytest_cov'):
-        with open(crossbar_config, 'r+') as stream:
+    if pytestconfig.pluginmanager.get_plugin("pytest_cov"):
+        with open(crossbar_config, "r+") as stream:
             conf = yaml.safe_load(stream)
 
-            for worker in conf['workers']:
-                if worker['type'] == 'guest':
-                    worker['executable'] = 'coverage'
-                    worker['arguments'].insert(0, 'run')
-                    worker['arguments'].insert(1, '--parallel-mode')
+            for worker in conf["workers"]:
+                if worker["type"] == "guest":
+                    worker["executable"] = "coverage"
+                    worker["arguments"].insert(0, "run")
+                    worker["arguments"].insert(1, "--parallel-mode")
                     # pytest-cov combines coverage files in root dir automatically, so copy it there
-                    coverage_data = pytestconfig.rootdir.join('.coverage')
-                    worker['arguments'].insert(2, f'--data-file={coverage_data}')
+                    coverage_data = pytestconfig.rootdir.join(".coverage")
+                    worker["arguments"].insert(2, f"--data-file={coverage_data}")
 
             stream.seek(0)
             yaml.safe_dump(conf, stream)
 
     return crossbar_config
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def crossbar(tmpdir, pytestconfig, crossbar_config):
     crossbar_venv = Path(pytestconfig.getoption("--crossbar-venv"))
     if not crossbar_venv.is_absolute():
@@ -133,17 +145,20 @@ def crossbar(tmpdir, pytestconfig, crossbar_config):
     crossbar_bin = crossbar_venv / "bin/crossbar"
 
     spawn = pexpect.spawn(
-        f'{crossbar_bin} start --color false --logformat none --config {crossbar_config}',
-        logfile=Prefixer(sys.stdout.buffer, 'crossbar'),
-        cwd=str(tmpdir))
+        f"{crossbar_bin} start --color false --logformat none --config {crossbar_config}",
+        logfile=Prefixer(sys.stdout.buffer, "crossbar"),
+        cwd=str(tmpdir),
+    )
     try:
-        spawn.expect('Realm .* started')
-        spawn.expect('Guest .* started')
-        spawn.expect('Coordinator ready')
+        spawn.expect("Realm .* started")
+        spawn.expect("Guest .* started")
+        spawn.expect("Coordinator ready")
     except:
         print(f"crossbar startup failed with {spawn.before}")
         raise
-    reader = threading.Thread(target=keep_reading, name='crossbar-reader', args=(spawn,), daemon=True)
+    reader = threading.Thread(
+        target=keep_reading, name="crossbar-reader", args=(spawn,), daemon=True
+    )
     reader.start()
     yield spawn
 
@@ -156,7 +171,8 @@ def crossbar(tmpdir, pytestconfig, crossbar_config):
 
     reader.join()
 
-@pytest.fixture(scope='function')
+
+@pytest.fixture(scope="function")
 def exporter(tmpdir, crossbar):
     p = tmpdir.join("exports.yaml")
     p.write(
@@ -178,15 +194,18 @@ def exporter(tmpdir, crossbar):
     """
     )
     spawn = pexpect.spawn(
-            f'{sys.executable} -m labgrid.remote.exporter --name testhost exports.yaml',
-            logfile=Prefixer(sys.stdout.buffer, 'exporter'),
-            cwd=str(tmpdir))
+        f"{sys.executable} -m labgrid.remote.exporter --name testhost exports.yaml",
+        logfile=Prefixer(sys.stdout.buffer, "exporter"),
+        cwd=str(tmpdir),
+    )
     try:
-        spawn.expect('exporter/testhost')
+        spawn.expect("exporter/testhost")
     except:
         print(f"exporter startup failed with {spawn.before}")
         raise
-    reader = threading.Thread(target=keep_reading, name='exporter-reader', args=(spawn,), daemon=True)
+    reader = threading.Thread(
+        target=keep_reading, name="exporter-reader", args=(spawn,), daemon=True
+    )
     reader.start()
     yield spawn
     print("stopping exporter")
@@ -194,26 +213,31 @@ def exporter(tmpdir, crossbar):
     assert not spawn.isalive()
     reader.join()
 
+
 def pytest_addoption(parser):
-    parser.addoption("--sigrok-usb", action="store_true",
-                     help="Run sigrok usb tests with fx2lafw device (0925:3881)")
-    parser.addoption("--local-sshmanager", action="store_true",
-                     help="Run SSHManager tests against localhost")
-    parser.addoption("--ssh-username", default=None,
-                     help="SSH username to use for SSHDriver testing")
-    parser.addoption("--crossbar-venv", default=None,
-                     help="Path to separate virtualenv with crossbar installed")
+    parser.addoption(
+        "--sigrok-usb",
+        action="store_true",
+        help="Run sigrok usb tests with fx2lafw device (0925:3881)",
+    )
+    parser.addoption(
+        "--local-sshmanager", action="store_true", help="Run SSHManager tests against localhost"
+    )
+    parser.addoption(
+        "--ssh-username", default=None, help="SSH username to use for SSHDriver testing"
+    )
+    parser.addoption(
+        "--crossbar-venv", default=None, help="Path to separate virtualenv with crossbar installed"
+    )
+
 
 def pytest_configure(config):
     # register an additional marker
-    config.addinivalue_line("markers",
-                            "sigrokusb: enable fx2lafw USB tests (0925:3881)")
-    config.addinivalue_line("markers",
-                            "localsshmanager: test SSHManager against Localhost")
-    config.addinivalue_line("markers",
-                            "sshusername: test SSHDriver against Localhost")
-    config.addinivalue_line("markers",
-                            "crossbar: test against local crossbar")
+    config.addinivalue_line("markers", "sigrokusb: enable fx2lafw USB tests (0925:3881)")
+    config.addinivalue_line("markers", "localsshmanager: test SSHManager against Localhost")
+    config.addinivalue_line("markers", "sshusername: test SSHDriver against Localhost")
+    config.addinivalue_line("markers", "crossbar: test against local crossbar")
+
 
 def pytest_runtest_setup(item):
     envmarker = item.get_closest_marker("sigrokusb")
@@ -223,11 +247,15 @@ def pytest_runtest_setup(item):
     envmarker = item.get_closest_marker("localsshmanager")
     if envmarker is not None:
         if item.config.getoption("--local-sshmanager") is False:
-            pytest.skip("SSHManager tests against localhost not enabled (enable with --local-sshmanager)")
+            pytest.skip(
+                "SSHManager tests against localhost not enabled (enable with --local-sshmanager)"
+            )
     envmarker = item.get_closest_marker("sshusername")
     if envmarker is not None:
         if item.config.getoption("--ssh-username") is None:
-            pytest.skip("SSHDriver tests against localhost not enabled (enable with --ssh-username <username>)")
+            pytest.skip(
+                "SSHDriver tests against localhost not enabled (enable with --ssh-username <username>)"
+            )
     envmarker = item.get_closest_marker("crossbar")
     if envmarker is not None:
         if item.config.getoption("--crossbar-venv") is None:

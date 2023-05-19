@@ -20,6 +20,7 @@ class ExternalConsoleDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
     """
     Driver implementing the ConsoleProtocol interface using a subprocess
     """
+
     cmd = attr.ib(validator=attr.validators.instance_of(str))
     txdelay = attr.ib(default=0.0, validator=attr.validators.instance_of(float))
 
@@ -88,7 +89,7 @@ class ExternalConsoleDriver(ConsoleExpectMixin, Driver, ConsoleProtocol):
         if self._poll.poll(timeout):
             return self._child.stdout.read(read_size)
 
-        return b''
+        return b""
 
     def _write(self, data: bytes):
         """

@@ -17,6 +17,7 @@ class Status(enum.Enum):
 @attr.s(eq=False)
 class UBootStrategy(Strategy):
     """UbootStrategy - Strategy to switch to uboot or shell"""
+
     bindings = {
         "power": "PowerProtocol",
         "console": "ConsoleProtocol",
@@ -35,7 +36,7 @@ class UBootStrategy(Strategy):
         if status == Status.unknown:
             raise StrategyError(f"can not transition to {status}")
         elif status == self.status:
-            return # nothing to do
+            return  # nothing to do
         elif status == Status.off:
             self.target.deactivate(self.console)
             self.target.activate(self.power)

@@ -27,9 +27,7 @@ class Strategy(Driver):  # reuse driver handling
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         if self.target is None:
-            raise BindingError(
-                "Strategies can only be created on a valid target"
-            )
+            raise BindingError("Strategies can only be created on a valid target")
 
     def on_client_bound(self, client):
         raise NotImplementedError("Strategies do not support clients")
@@ -44,10 +42,14 @@ class Strategy(Driver):  # reuse driver handling
         raise NotImplementedError("Strategies do not support clients")
 
     def transition(self, status):
-        raise NotImplementedError(f"Strategy.transition() is not implemented for {self.__class__.__name__}")
+        raise NotImplementedError(
+            f"Strategy.transition() is not implemented for {self.__class__.__name__}"
+        )
 
     def force(self, status):
-        raise NotImplementedError(f"Strategy.force() is not implemented for {self.__class__.__name__}")
+        raise NotImplementedError(
+            f"Strategy.force() is not implemented for {self.__class__.__name__}"
+        )
 
     def prepare_export(self):
         """By default, export all drivers bound by the strategy."""

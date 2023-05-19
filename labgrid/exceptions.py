@@ -10,8 +10,7 @@ class NoConfigFoundError(Exception):
 class NoSupplierFoundError(Exception):
     msg = attr.ib(validator=attr.validators.instance_of(str))
     filter = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(set))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(set))
     )
 
 
@@ -28,8 +27,7 @@ class NoDriverFoundError(NoSupplierFoundError):
 @attr.s(eq=False)
 class NoResourceFoundError(NoSupplierFoundError):
     found = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(list))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(list))
     )
 
 

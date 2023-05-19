@@ -8,6 +8,7 @@ from .common import Driver
 from .ubootdriver import UBootDriver
 from ..util import re_vt100
 
+
 @target_factory.reg_driver
 @attr.s(eq=False)
 class SmallUBootDriver(UBootDriver):
@@ -62,7 +63,7 @@ class SmallUBootDriver(UBootDriver):
         # wait for boot expression. Afterwards enter secret
         self.console.expect(self.boot_expression, timeout=self.login_timeout)
         if self.boot_secret_nolf:
-            self.console.write(self.boot_secret.encode('ASCII'))
+            self.console.write(self.boot_secret.encode("ASCII"))
         else:
             self.console.sendline(self.boot_secret)
         self._status = 1
@@ -72,7 +73,9 @@ class SmallUBootDriver(UBootDriver):
         for command in self.init_commands:
             self._run(command)
 
-    def _run(self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"):  # pylint: disable=line-too-long
+    def _run(
+        self, cmd: str, *, timeout: int = 30, codec: str = "utf-8", decodeerrors: str = "strict"
+    ):  # pylint: disable=line-too-long
         """
         If Uboot is in Command-Line mode: Run command cmd and return it's
         output.
@@ -98,19 +101,17 @@ class SmallUBootDriver(UBootDriver):
         self.console.sendline(cmp_command)
         _, before, _, _ = self.console.expect(self.prompt, timeout=timeout)
 
-        data = re_vt100.sub(
-            '', before.decode('utf-8'), count=1000000
-        ).replace("\r", "").split("\n")
+        data = re_vt100.sub("", before.decode("utf-8"), count=1000000).replace("\r", "").split("\n")
         data = data[1:]
-        data = data[data.index(f"Unknown command 'echo{marker}' - try 'help'") +1 :]
-        data = data[:data.index(f"Unknown command 'echo{marker}' - try 'help'")]
+        data = data[data.index(f"Unknown command 'echo{marker}' - try 'help'") + 1 :]
+        data = data[: data.index(f"Unknown command 'echo{marker}' - try 'help'")]
         if len(data) >= 1:
             if data[0].startswith("Unknown command '"):
                 return (data, [], 1)
         return (data, [], 0)
 
     @Driver.check_active
-    @step(args=['name'], result=True)
+    @step(args=["name"], result=True)
     def boot(self, name):
         """
         Boot the device from the given memory location using 'bootm'.

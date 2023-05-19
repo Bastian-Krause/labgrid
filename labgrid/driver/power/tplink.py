@@ -10,9 +10,7 @@ async def _power_set(host, port, index, value):
     index = int(index)
     strip = SmartStrip(host)
     await strip.update()
-    assert (
-        len(strip.children) > index
-    ), "Trying to access non-existant plug socket on strip"
+    assert len(strip.children) > index, "Trying to access non-existant plug socket on strip"
     if value is True:
         await strip.children[index].turn_on()
     elif value is False:
@@ -28,7 +26,5 @@ def power_get(host, port, index):
     index = int(index)
     strip = SmartStrip(host)
     asyncio.run(strip.update())
-    assert (
-        len(strip.children) > index
-    ), "Trying to access non-existant plug socket on strip"
+    assert len(strip.children) > index, "Trying to access non-existant plug socket on strip"
     return strip.children[index].is_on

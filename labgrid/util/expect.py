@@ -19,7 +19,7 @@ class PtxExpect(pexpect.spawn):
     def send(self, s):
         "Write to underlying transport, return number of bytes written"
         s = self._coerce_send_string(s)
-        self._log(s, 'send')
+        self._log(s, "send")
 
         b = s
         return self.driver.write(b)

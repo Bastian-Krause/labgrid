@@ -49,42 +49,45 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
             egl-headless: Create a headless GPU-backed graphics card. Requires host support
         nic (str): optional, configuration string to pass to QEMU to create a network interface
     """
+
     qemu_bin = attr.ib(validator=attr.validators.instance_of(str))
     machine = attr.ib(validator=attr.validators.instance_of(str))
     cpu = attr.ib(validator=attr.validators.instance_of(str))
     memory = attr.ib(validator=attr.validators.instance_of(str))
     extra_args = attr.ib(validator=attr.validators.instance_of(str))
     boot_args = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     kernel = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     disk = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     rootfs = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     dtb = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     flash = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     bios = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
     display = attr.ib(
         default="none",
-        validator=attr.validators.optional(attr.validators.and_(
-            attr.validators.instance_of(str),
-            attr.validators.in_(["none", "fb-headless", "egl-headless"]),
-        ))
+        validator=attr.validators.optional(
+            attr.validators.and_(
+                attr.validators.instance_of(str),
+                attr.validators.in_(["none", "fb-headless", "egl-headless"]),
+            )
+        ),
     )
     nic = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str)))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
+    )
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
@@ -117,16 +120,14 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
 
         qemu_bin = self.target.env.config.get_tool(self.qemu_bin)
         if qemu_bin is None:
-            raise KeyError(
-                "QEMU Binary Path not configured in tools configuration key")
+            raise KeyError("QEMU Binary Path not configured in tools configuration key")
         self._cmd = [qemu_bin]
 
         boot_args = []
 
         if self.kernel is not None:
             self._cmd.append("-kernel")
-            self._cmd.append(
-                self.target.env.config.get_image_path(self.kernel))
+            self._cmd.append(self.target.env.config.get_image_path(self.kernel))
         if self.disk is not None:
             disk_path = self.target.env.config.get_image_path(self.disk)
             disk_format = "raw"
@@ -134,18 +135,15 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
                 disk_format = "qcow2"
             if self.machine == "vexpress-a9":
                 self._cmd.append("-drive")
-                self._cmd.append(
-                    f"if=sd,format={disk_format},file={disk_path},id=mmc0")
+                self._cmd.append(f"if=sd,format={disk_format},file={disk_path},id=mmc0")
                 boot_args.append("root=/dev/mmcblk0p1 rootfstype=ext4 rootwait")
             elif self.machine == "q35":
                 self._cmd.append("-drive")
-                self._cmd.append(
-                    f"if=virtio,format={disk_format},file={disk_path}")
+                self._cmd.append(f"if=virtio,format={disk_format},file={disk_path}")
                 boot_args.append("root=/dev/vda rootwait")
             elif self.machine == "pc":
                 self._cmd.append("-drive")
-                self._cmd.append(
-                    f"if=virtio,format={disk_format},file={disk_path}")
+                self._cmd.append(f"if=virtio,format={disk_format},file={disk_path}")
                 boot_args.append("root=/dev/vda rootwait")
             else:
                 raise NotImplementedError(
@@ -154,10 +152,10 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
         if self.rootfs is not None:
             self._cmd.append("-fsdev")
             self._cmd.append(
-                f"local,id=rootfs,security_model=none,path={self.target.env.config.get_path(self.rootfs)}")  # pylint: disable=line-too-long
+                f"local,id=rootfs,security_model=none,path={self.target.env.config.get_path(self.rootfs)}"
+            )  # pylint: disable=line-too-long
             self._cmd.append("-device")
-            self._cmd.append(
-                "virtio-9p-device,fsdev=rootfs,mount_tag=/dev/root")
+            self._cmd.append("virtio-9p-device,fsdev=rootfs,mount_tag=/dev/root")
             boot_args.append("root=/dev/root rootfstype=9p rootflags=trans=virtio")
         if self.dtb is not None:
             self._cmd.append("-dtb")
@@ -165,11 +163,11 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
         if self.flash is not None:
             self._cmd.append("-drive")
             self._cmd.append(
-                f"if=pflash,format=raw,file={self.target.env.config.get_image_path(self.flash)},id=nor0")  # pylint: disable=line-too-long
+                f"if=pflash,format=raw,file={self.target.env.config.get_image_path(self.flash)},id=nor0"
+            )  # pylint: disable=line-too-long
         if self.bios is not None:
             self._cmd.append("-bios")
-            self._cmd.append(
-                self.target.env.config.get_image_path(self.bios))
+            self._cmd.append(self.target.env.config.get_image_path(self.bios))
 
         if "-append" in shlex.split(self.extra_args):
             raise ExecutionError("-append in extra_args not allowed, use boot_args instead")
@@ -229,8 +227,7 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
         if self.status:
             return
         self.logger.debug("Starting with: %s", self._cmd)
-        self._child = subprocess.Popen(
-            self._cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
+        self._child = subprocess.Popen(self._cmd, stdin=subprocess.PIPE, stdout=subprocess.PIPE)
 
         # prepare for timeout handing
         self._clientsocket, address = self._socket.accept()
@@ -260,7 +257,7 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
         """Stop the emulator using a monitor command and await the exitcode"""
         if not self.status:
             return
-        self.monitor_command('quit')
+        self.monitor_command("quit")
         if self._child.wait() != 0:
             self._child.communicate()
             raise IOError
@@ -272,23 +269,30 @@ class QEMUDriver(ConsoleExpectMixin, Driver, PowerProtocol, ConsoleProtocol):
         self.off()
         self.on()
 
-    @step(result=True, args=['command', 'arguments'])
+    @step(result=True, args=["command", "arguments"])
     def monitor_command(self, command, arguments={}):
         """Execute a monitor_command via the QMP"""
         if not self.status:
-            raise ExecutionError(
-                "Can't use monitor command on non-running target")
+            raise ExecutionError("Can't use monitor command on non-running target")
         return self.qmp.execute(command, arguments)
 
     def _add_port_forward(self, proto, local_address, local_port, remote_address, remote_port):
         self.monitor_command(
             "human-monitor-command",
-            {"command-line": f"hostfwd_add {proto}:{local_address}:{local_port}-{remote_address}:{remote_port}"},
+            {
+                "command-line": f"hostfwd_add {proto}:{local_address}:{local_port}-{remote_address}:{remote_port}"
+            },
         )
 
     def add_port_forward(self, proto, local_address, local_port, remote_address, remote_port):
         self._add_port_forward(proto, local_address, local_port, remote_address, remote_port)
-        self._forwarded_ports[(proto, local_address, local_port)] = (proto, local_address, local_port, remote_address, remote_port)
+        self._forwarded_ports[(proto, local_address, local_port)] = (
+            proto,
+            local_address,
+            local_port,
+            remote_address,
+            remote_port,
+        )
 
     def remove_port_forward(self, proto, local_address, local_port):
         del self._forwarded_ports[(proto, local_address, local_port)]

@@ -15,30 +15,31 @@ from ..resource.remote import RemoteAndroidUSBFastboot, RemoteAndroidNetFastboot
 @attr.s(eq=False)
 class AndroidFastbootDriver(Driver):
     bindings = {
-        "fastboot": {AndroidUSBFastboot, RemoteAndroidUSBFastboot,
-                     AndroidNetFastboot, RemoteAndroidNetFastboot},
+        "fastboot": {
+            AndroidUSBFastboot,
+            RemoteAndroidUSBFastboot,
+            AndroidNetFastboot,
+            RemoteAndroidNetFastboot,
+        },
     }
 
     boot_image = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
     flash_images = attr.ib(
-        default={},
-        validator=attr.validators.optional(attr.validators.instance_of(dict))
+        default={}, validator=attr.validators.optional(attr.validators.instance_of(dict))
     )
     sparse_size = attr.ib(
-        default=None,
-        validator=attr.validators.optional(attr.validators.instance_of(str))
+        default=None, validator=attr.validators.optional(attr.validators.instance_of(str))
     )
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('fastboot')
+            self.tool = self.target.env.config.get_tool("fastboot")
         else:
-            self.tool = 'fastboot'
+            self.tool = "fastboot"
 
     def _get_fastboot_prefix(self):
         if isinstance(self.fastboot, (AndroidUSBFastboot, RemoteAndroidUSBFastboot)):
@@ -46,7 +47,7 @@ class AndroidFastbootDriver(Driver):
         else:
             option = f"{self.fastboot.protocol}:{self.fastboot.address}:{self.fastboot.port}"
 
-        prefix = self.fastboot.command_prefix + [ self.tool, "-s", option ]
+        prefix = self.fastboot.command_prefix + [self.tool, "-s", option]
 
         if self.sparse_size is not None:
             prefix += ["-S", self.sparse_size]
@@ -54,12 +55,12 @@ class AndroidFastbootDriver(Driver):
         return prefix
 
     @staticmethod
-    def _filter_fastboot_output(output, prefix='(bootloader) '):
+    def _filter_fastboot_output(output, prefix="(bootloader) "):
         """
         Splits output by '\n' and returns only elements starting with prefix. The prefix is
         removed.
         """
-        return [line[len(prefix):] for line in output.split('\n') if line.startswith(prefix)]
+        return [line[len(prefix) :] for line in output.split("\n") if line.startswith(prefix)]
 
     def on_activate(self):
         pass
@@ -68,15 +69,14 @@ class AndroidFastbootDriver(Driver):
         pass
 
     @Driver.check_active
-    @step(title='call', args=['args'])
+    @step(title="call", args=["args"])
     def __call__(self, *args):
         processwrapper.check_output(
-            self._get_fastboot_prefix() + list(args),
-            print_on_silent_log=True
+            self._get_fastboot_prefix() + list(args), print_on_silent_log=True
         )
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def boot(self, filename=None):
         if filename is None:
             if self.boot_image is None:
@@ -89,7 +89,7 @@ class AndroidFastbootDriver(Driver):
         self("boot", mf.get_remote_path())
 
     @Driver.check_active
-    @step(args=['partition', 'filename'])
+    @step(args=["partition", "filename"])
     def flash(self, partition, filename=None):
         if filename is None:
             try:
@@ -110,36 +110,34 @@ class AndroidFastbootDriver(Driver):
             self.flash(partition)
 
     @Driver.check_active
-    @step(args=['cmd'])
+    @step(args=["cmd"])
     def run(self, cmd):
         self("oem", "exec", "--", cmd)
 
     @Driver.check_active
-    @step(title='continue')
+    @step(title="continue")
     def continue_boot(self):
         self("continue")
 
     @Driver.check_active
-    @step(args=['var'])
+    @step(args=["var"])
     def getvar(self, var):
         """Return variable value via 'fastboot getvar <var>'."""
-        if var == 'all':
-            raise NotImplementedError('Retrieving a list of all variables is not supported yet')
+        if var == "all":
+            raise NotImplementedError("Retrieving a list of all variables is not supported yet")
 
-        cmd = ['getvar', var]
+        cmd = ["getvar", var]
         output = processwrapper.check_output(self._get_fastboot_prefix() + cmd)
-        values = AndroidFastbootDriver._filter_fastboot_output(
-            output, f'{var}: '
-        )
-        assert len(values) == 1, 'fastboot did not return exactly one line'
+        values = AndroidFastbootDriver._filter_fastboot_output(output, f"{var}: ")
+        assert len(values) == 1, "fastboot did not return exactly one line"
         return values[0]
 
     @Driver.check_active
-    @step(args=['var'])
+    @step(args=["var"])
     def oem_getenv(self, var):
         """Return barebox environment variable value via 'fastboot oem getenv <var>'."""
-        cmd = ['oem', 'getenv', var]
+        cmd = ["oem", "getenv", var]
         output = processwrapper.check_output(self._get_fastboot_prefix() + cmd)
         values = AndroidFastbootDriver._filter_fastboot_output(output)
-        assert len(values) == 1, 'fastboot did not return exactly one line'
+        assert len(values) == 1, "fastboot did not return exactly one line"
         return values[0]

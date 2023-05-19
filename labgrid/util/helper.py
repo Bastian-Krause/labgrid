@@ -15,10 +15,11 @@ from ..step import step
 
 re_vt100 = re.compile(r"(\x1b\[|\x9b)[^@-_a-z]*[@-_a-z]|\x1b[@-_a-z]")
 
+
 def get_free_port():
     """Helper function to always return an unused port."""
     with closing(socket(AF_INET, SOCK_STREAM)) as s:
-        s.bind(('', 0))
+        s.bind(("", 0))
         return s.getsockname()[1]
 
 
@@ -28,19 +29,24 @@ def get_user():
     if user:
         return user
     import pwd
+
     return pwd.getpwuid(os.getuid())[0]
+
 
 def set_nonblocking(fd):
     flags = fcntl.fcntl(fd, fcntl.F_GETFL)
     fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
+
 
 @attr.s
 class ProcessWrapper:
     callbacks = attr.ib(default=attr.Factory(list))
     loglevel = logging.INFO
 
-    @step(args=['command'], result=True, tag='process')
-    def check_output(self, command, *, print_on_silent_log=False, input=None, stdin=None): # pylint: disable=redefined-builtin
+    @step(args=["command"], result=True, tag="process")
+    def check_output(
+        self, command, *, print_on_silent_log=False, input=None, stdin=None
+    ):  # pylint: disable=redefined-builtin
         """Run a command and supply the output to callback functions"""
         logger = logging.getLogger("Process")
         res = []
@@ -53,13 +59,12 @@ class ProcessWrapper:
         stdin_w = None
         if input is not None:
             stdin_r, stdin_w = os.pipe()
-            kwargs['stdin'] = stdin_r
+            kwargs["stdin"] = stdin_r
             set_nonblocking(stdin_w)
         elif stdin is not None:
-            kwargs['stdin'] = stdin
+            kwargs["stdin"] = stdin
 
-        process = subprocess.Popen(command, stderr=sfd,
-                                   stdout=sfd, bufsize=0, **kwargs)
+        process = subprocess.Popen(command, stderr=sfd, stdout=sfd, bufsize=0, **kwargs)
 
         logger.log(ProcessWrapper.loglevel, "[%d] command: %s", process.pid, " ".join(command))
 
@@ -99,7 +104,7 @@ class ProcessWrapper:
 
                 if raw:
                     buf += raw
-                    *parts, buf = buf.split(b'\r')
+                    *parts, buf = buf.split(b"\r")
                     res.extend(parts)
                     for part in parts:
                         for callback in self.callbacks:
@@ -135,8 +140,8 @@ class ProcessWrapper:
         if buf:
             # process incomplete line
             res.append(buf)
-            if buf[-1] != b'\n':
-                buf += b'\n'
+            if buf[-1] != b"\n":
+                buf += b"\n"
             for callback in self.callbacks:
                 callback(buf, process)
 
@@ -144,12 +149,10 @@ class ProcessWrapper:
             self.disable_print()
 
         if process.returncode != 0:
-            raise subprocess.CalledProcessError(process.returncode,
-                                                command,
-                                                output=b'\r'.join(res))
+            raise subprocess.CalledProcessError(process.returncode, command, output=b"\r".join(res))
         # this converts '\r\n' to '\n' to be more compatible to the behaviour
         # of the normal subprocess module
-        return b'\n'.join([r.strip(b'\n') for r in res])
+        return b"\n".join([r.strip(b"\n") for r in res])
 
     def register(self, callback):
         """Register a callback with the ProcessWrapper"""
@@ -175,7 +178,7 @@ class ProcessWrapper:
     def print_callback(message, _):
         """Prints process output message."""
         message = message.decode(encoding="utf-8", errors="replace")
-        print(f"\r{message}", end='')
+        print(f"\r{message}", end="")
 
     def enable_logging(self):
         """Enables process output to the logging interface."""

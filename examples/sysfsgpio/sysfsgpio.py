@@ -9,14 +9,14 @@ from labgrid.driver.gpiodriver import GpioDigitalOutputDriver
 # enable debug logging
 logging.basicConfig(
     level=logging.DEBUG,
-    format='%(levelname)7s: %(message)s',
+    format="%(levelname)7s: %(message)s",
     stream=sys.stderr,
 )
 
 # show labgrid steps on the console
 StepReporter.start()
 
-t = labgrid.Target('main')
+t = labgrid.Target("main")
 r = labgrid.resource.base.SysfsGPIO(t, name=None, index=60)
 d = GpioDigitalOutputDriver(t, name=None)
 

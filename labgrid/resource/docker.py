@@ -16,6 +16,7 @@ from .common import ManagedResource, ResourceManager
 
 class DockerConstants:
     """Class constants for handling container cleanup"""
+
     DOCKER_LG_CLEANUP_LABEL = "lg_cleanup"
     # Currently only a single cleanup routine is implemented which removes
     # all labgrid created containers on each test run. In the future more
@@ -34,7 +35,7 @@ class DockerManager(ResourceManager):
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
-        self.log = logging.getLogger('DockerManager')
+        self.log = logging.getLogger("DockerManager")
         self._client = dict()
         self._docker_daemons_cleaned = list()
 
@@ -45,11 +46,12 @@ class DockerManager(ResourceManager):
 
         """
         import docker  # lazy import!
+
         if resource.target.name in self._client:
-            raise EnvironmentError(
-                "Only one docker daemon is allowed for each target")
-        self._client[resource.target.name] = \
-            docker.DockerClient(base_url=resource.docker_daemon_url)
+            raise EnvironmentError("Only one docker daemon is allowed for each target")
+        self._client[resource.target.name] = docker.DockerClient(
+            base_url=resource.docker_daemon_url
+        )
         self._container_cleanup(self._client[resource.target.name])
         resource.avail = True
 
@@ -67,19 +69,23 @@ class DockerManager(ResourceManager):
         """
         if docker_client.api.base_url not in self._docker_daemons_cleaned:
             container_list = docker_client.api.containers(
-                all=True, filters={"label": DockerConstants.DOCKER_LG_CLEANUP_LABEL})
+                all=True, filters={"label": DockerConstants.DOCKER_LG_CLEANUP_LABEL}
+            )
             for container in container_list:
-                if (container['Labels'][DockerConstants.DOCKER_LG_CLEANUP_LABEL] ==
-                        DockerConstants.DOCKER_LG_CLEANUP_TYPE_AUTO):
-                    self.log.info("Deleting container %s", container['Names'][0])
-                    docker_client.api.remove_container(container['Id'], force=True)
+                if (
+                    container["Labels"][DockerConstants.DOCKER_LG_CLEANUP_LABEL]
+                    == DockerConstants.DOCKER_LG_CLEANUP_TYPE_AUTO
+                ):
+                    self.log.info("Deleting container %s", container["Names"][0])
+                    docker_client.api.remove_container(container["Id"], force=True)
             self._docker_daemons_cleaned.append(docker_client.api.base_url)
 
 
 @target_factory.reg_resource
 @attr.s(eq=False)
 class DockerDaemon(ManagedResource):
-    """ A resource identifying a docker daemon """
+    """A resource identifying a docker daemon"""
+
     docker_daemon_url = attr.ib(validator=attr.validators.instance_of(str))
 
     """The docker network service is a managed resource mapping a
@@ -90,7 +96,7 @@ class DockerDaemon(ManagedResource):
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         self._nw_services = dict()
-        self.log = logging.getLogger('DockerContainer')
+        self.log = logging.getLogger("DockerContainer")
         self.timeout = 5.0
         self.avail = True
 
@@ -104,13 +110,13 @@ class DockerDaemon(ManagedResource):
         for network_service in client.network_services:
             # IP address is not yet known at this point
             network_service["address"] = ""
-            if 'name' in network_service:
+            if "name" in network_service:
                 service_name = network_service["name"]
             else:
                 service_name = "NetworkService"
             nw_service = target_factory.make_resource(
-                self.target, "NetworkService",
-                service_name, network_service)
+                self.target, "NetworkService", service_name, network_service
+            )
             if client.container_name not in self._nw_services:
                 self._nw_services[client.container_name] = list()
             self._nw_services[client.container_name].append(nw_service)
@@ -130,16 +136,15 @@ class DockerDaemon(ManagedResource):
         for container_name, nw_service_list in self._nw_services.items():
             for nw_service in nw_service_list:
                 if nw_service.address == "":
-                    container = docker_client.api.containers(
-                        filters={"name": "/" + container_name})
+                    container = docker_client.api.containers(filters={"name": "/" + container_name})
                     self.log.debug("Containers found %s", container)
                     if container:
                         nw_service.address = find_dict(
-                            d=container[0]['NetworkSettings'],
-                            key='IPAddress')
-                if (nw_service.address != "" and
-                        self._socket_connect(nw_service.address,
-                                             nw_service.port)):
+                            d=container[0]["NetworkSettings"], key="IPAddress"
+                        )
+                if nw_service.address != "" and self._socket_connect(
+                    nw_service.address, nw_service.port
+                ):
                     nw_service.avail = True
                 else:
                     nw_service.avail = False

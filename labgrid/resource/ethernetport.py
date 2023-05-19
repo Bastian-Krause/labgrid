@@ -7,10 +7,12 @@ import attr
 from ..factory import target_factory
 from .common import ManagedResource, ResourceManager
 
+
 @attr.s
 class SNMPSwitch:
     """SNMPSwitch describes a switch accessible over SNMP. This class
     implements functions to query ports and the forwarding database."""
+
     hostname = attr.ib(validator=attr.validators.instance_of(str))
 
     def __attrs_post_init__(self):
@@ -23,12 +25,13 @@ class SNMPSwitch:
     def _autodetect(self):
         from pysnmp import hlapi
 
-        for (errorIndication, errorStatus, _, varBindTable) in hlapi.getCmd(
-                hlapi.SnmpEngine(),
-                hlapi.CommunityData('public'),
-                hlapi.UdpTransportTarget((self.hostname, 161)),
-                hlapi.ContextData(),
-                hlapi.ObjectType(hlapi.ObjectIdentity('SNMPv2-MIB', 'sysDescr', 0))):
+        for errorIndication, errorStatus, _, varBindTable in hlapi.getCmd(
+            hlapi.SnmpEngine(),
+            hlapi.CommunityData("public"),
+            hlapi.UdpTransportTarget((self.hostname, 161)),
+            hlapi.ContextData(),
+            hlapi.ObjectType(hlapi.ObjectIdentity("SNMPv2-MIB", "sysDescr", 0)),
+        ):
             if errorIndication:
                 raise Exception(f"snmp error {errorIndication}")
             elif errorStatus:
@@ -54,24 +57,26 @@ class SNMPSwitch:
         from pysnmp import hlapi
 
         variables = [
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifIndex')), 'index'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifDescr')), 'descr'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifSpeed')), 'speed'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifOperStatus')), 'status'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifInErrors')), 'inErrors'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifHCInOctets')), 'inOctets'),
-            (hlapi.ObjectType(hlapi.ObjectIdentity('IF-MIB', 'ifHCOutOctets')), 'outOctets'),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifIndex")), "index"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifDescr")), "descr"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifSpeed")), "speed"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifOperStatus")), "status"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifInErrors")), "inErrors"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifHCInOctets")), "inOctets"),
+            (hlapi.ObjectType(hlapi.ObjectIdentity("IF-MIB", "ifHCOutOctets")), "outOctets"),
         ]
         ports = {}
 
-        for (errorIndication, errorStatus, _, varBindTable) in hlapi.bulkCmd(
-                hlapi.SnmpEngine(),
-                hlapi.CommunityData('public'),
-                hlapi.UdpTransportTarget((self.hostname, 161)),
-                hlapi.ContextData(),
-                0, 20,
-                *[x[0] for x in variables],
-                lexicographicMode=False):
+        for errorIndication, errorStatus, _, varBindTable in hlapi.bulkCmd(
+            hlapi.SnmpEngine(),
+            hlapi.CommunityData("public"),
+            hlapi.UdpTransportTarget((self.hostname, 161)),
+            hlapi.ContextData(),
+            0,
+            20,
+            *[x[0] for x in variables],
+            lexicographicMode=False,
+        ):
             if errorIndication:
                 raise Exception(f"snmp error {errorIndication}")
             elif errorStatus:
@@ -80,10 +85,10 @@ class SNMPSwitch:
                 port = {}
                 for (_, val), (_, label) in zip(varBindTable, variables):
                     val = val.prettyPrint()
-                    if label == 'status':
+                    if label == "status":
                         val = val.strip("'")
                     port[label] = val
-                ports[port.pop('index')] = port
+                ports[port.pop("index")] = port
 
         return ports
 
@@ -97,14 +102,16 @@ class SNMPSwitch:
 
         ports = {}
 
-        for (errorIndication, errorStatus, _, varBindTable) in hlapi.bulkCmd(
-                hlapi.SnmpEngine(),
-                hlapi.CommunityData('public'),
-                hlapi.UdpTransportTarget((self.hostname, 161)),
-                hlapi.ContextData(),
-                0, 50,
-                hlapi.ObjectType(hlapi.ObjectIdentity('BRIDGE-MIB', 'dot1dTpFdbPort')),
-                lexicographicMode=False):
+        for errorIndication, errorStatus, _, varBindTable in hlapi.bulkCmd(
+            hlapi.SnmpEngine(),
+            hlapi.CommunityData("public"),
+            hlapi.UdpTransportTarget((self.hostname, 161)),
+            hlapi.ContextData(),
+            0,
+            50,
+            hlapi.ObjectType(hlapi.ObjectIdentity("BRIDGE-MIB", "dot1dTpFdbPort")),
+            lexicographicMode=False,
+        ):
             if errorIndication:
                 raise Exception(f"snmp error {errorIndication}")
             elif errorStatus:
@@ -130,14 +137,16 @@ class SNMPSwitch:
 
         ports = {}
 
-        for (errorIndication, errorStatus, _, varBindTable) in hlapi.bulkCmd(
-                hlapi.SnmpEngine(),
-                hlapi.CommunityData('public'),
-                hlapi.UdpTransportTarget((self.hostname, 161)),
-                hlapi.ContextData(),
-                0, 50,
-                hlapi.ObjectType(hlapi.ObjectIdentity('Q-BRIDGE-MIB', 'dot1qTpFdbPort')),
-                lexicographicMode=False):
+        for errorIndication, errorStatus, _, varBindTable in hlapi.bulkCmd(
+            hlapi.SnmpEngine(),
+            hlapi.CommunityData("public"),
+            hlapi.UdpTransportTarget((self.hostname, 161)),
+            hlapi.ContextData(),
+            0,
+            50,
+            hlapi.ObjectType(hlapi.ObjectIdentity("Q-BRIDGE-MIB", "dot1qTpFdbPort")),
+            lexicographicMode=False,
+        ):
             if errorIndication:
                 raise Exception(f"snmp error {errorIndication}")
             elif errorStatus:
@@ -181,6 +190,7 @@ class SNMPSwitch:
 @attr.s
 class EthernetPortManager(ResourceManager):
     """The EthernetPortManager periodically polls the switch for new updates."""
+
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         self.logger = logging.getLogger(f"{self}")
@@ -247,6 +257,7 @@ class EthernetPortManager(ResourceManager):
                     break
                 except Exception:  # pylint: disable=broad-except
                     import traceback
+
                     traceback.print_exc(file=sys.stderr)
 
         self.loop = asyncio.get_event_loop()
@@ -263,20 +274,20 @@ class EthernetPortManager(ResourceManager):
         """
         neighbors = {}
 
-        for line in subprocess.check_output(['ip', 'neigh', 'show']).splitlines():
-            line = line.decode('ascii').strip().split()
+        for line in subprocess.check_output(["ip", "neigh", "show"]).splitlines():
+            line = line.decode("ascii").strip().split()
             addr = line.pop(0)
-            if line[0] == 'dev':
-                line.pop(0) # "dev"
-                line.pop(0) # actual dev
-            if line[0] == 'lladdr':
+            if line[0] == "dev":
+                line.pop(0)  # "dev"
+                line.pop(0)  # actual dev
+            if line[0] == "lladdr":
                 line.pop(0)
                 lladdr = line.pop(0)
             else:
                 lladdr = None
-            if line[0] == 'router':
+            if line[0] == "router":
                 line.pop()
-            line.pop(0) # state
+            line.pop(0)  # state
             assert not line
             # TODO: check if we could use the device and state information
             neighbors.setdefault(lladdr, []).append(addr)
@@ -292,6 +303,7 @@ class EthernetPortManager(ResourceManager):
             None
         """
         import asyncio
+
         if not self.loop.is_running():
             self.loop.run_until_complete(asyncio.sleep(0.0))
         for resource in self.resources:
@@ -301,9 +313,9 @@ class EthernetPortManager(ResourceManager):
                 continue
             extra = {}
             for mac, timestamp in switch.macs_by_port.get(resource.interface, {}).items():
-                extra.setdefault('macs', {})[mac] = {
-                    'timestamp': timestamp,
-                    'ips': self.neighbors.get(mac, []),
+                extra.setdefault("macs", {})[mac] = {
+                    "timestamp": timestamp,
+                    "ips": self.neighbors.get(mac, []),
                 }
             extra.update(switch.ports.get(resource.interface, {}))
             if resource.extra != extra:
@@ -321,6 +333,7 @@ class SNMPEthernetPort(ManagedResource):
         switch (str): hostname of the switch to query
         interface (str): name of the interface to query
     """
+
     manager_cls = EthernetPortManager
 
     switch = attr.ib(validator=attr.validators.instance_of(str))

@@ -3,6 +3,7 @@ from labgrid.driver.modbusrtudriver import ModbusRTUDriver
 
 import pytest
 
+
 def test_resource_with_minimum_argument(target):
     dut = ModbusRTU(target, name=None, port="/dev/tty1", address=10)
 
@@ -13,8 +14,7 @@ def test_resource_with_minimum_argument(target):
 
 
 def test_resource_with_non_default_argument(target):
-    dut = ModbusRTU(target, name=None, port="/dev/tty1", address=10,
-                    speed=9600, timeout=0.5)
+    dut = ModbusRTU(target, name=None, port="/dev/tty1", address=10, speed=9600, timeout=0.5)
 
     assert dut.port == "/dev/tty1"
     assert dut.address == 10

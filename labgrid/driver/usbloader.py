@@ -23,9 +23,9 @@ class MXSUSBDriver(Driver, BootstrapProtocol):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('mxs-usb-loader')
+            self.tool = self.target.env.config.get_tool("mxs-usb-loader")
         else:
-            self.tool = 'mxs-usb-loader'
+            self.tool = "mxs-usb-loader"
 
     def on_activate(self):
         pass
@@ -34,7 +34,7 @@ class MXSUSBDriver(Driver, BootstrapProtocol):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def load(self, filename=None):
         if filename is None and self.image is not None:
             filename = self.target.env.config.get_image_path(self.image)
@@ -43,7 +43,7 @@ class MXSUSBDriver(Driver, BootstrapProtocol):
 
         processwrapper.check_output(
             self.loader.command_prefix + [self.tool, "0", mf.get_remote_path()],
-            print_on_silent_log=True
+            print_on_silent_log=True,
         )
 
 
@@ -60,9 +60,9 @@ class IMXUSBDriver(Driver, BootstrapProtocol):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('imx-usb-loader')
+            self.tool = self.target.env.config.get_tool("imx-usb-loader")
         else:
-            self.tool = 'imx-usb-loader'
+            self.tool = "imx-usb-loader"
 
     def on_activate(self):
         pass
@@ -71,7 +71,7 @@ class IMXUSBDriver(Driver, BootstrapProtocol):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def load(self, filename=None):
         if filename is None and self.image is not None:
             filename = self.target.env.config.get_image_path(self.image)
@@ -79,9 +79,9 @@ class IMXUSBDriver(Driver, BootstrapProtocol):
         mf.sync_to_resource()
 
         processwrapper.check_output(
-            self.loader.command_prefix +
-            [self.tool, "-p", str(self.loader.path), "-c", mf.get_remote_path()],
-            print_on_silent_log=True
+            self.loader.command_prefix
+            + [self.tool, "-p", str(self.loader.path), "-c", mf.get_remote_path()],
+            print_on_silent_log=True,
         )
 
 
@@ -99,9 +99,9 @@ class RKUSBDriver(Driver, BootstrapProtocol):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('rk-usb-loader')
+            self.tool = self.target.env.config.get_tool("rk-usb-loader")
         else:
-            self.tool = 'rk-usb-loader'
+            self.tool = "rk-usb-loader"
 
     def on_activate(self):
         pass
@@ -110,7 +110,7 @@ class RKUSBDriver(Driver, BootstrapProtocol):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def load(self, filename=None):
         if self.target.env:
             usb_loader = self.target.env.config.get_image_path(self.usb_loader)
@@ -121,9 +121,8 @@ class RKUSBDriver(Driver, BootstrapProtocol):
         while True:
             try:
                 processwrapper.check_output(
-                    self.loader.command_prefix +
-                    [self.tool, 'db', mf.get_remote_path()],
-                    print_on_silent_log=True
+                    self.loader.command_prefix + [self.tool, "db", mf.get_remote_path()],
+                    print_on_silent_log=True,
                 )
                 break
             except subprocess.CalledProcessError:
@@ -139,9 +138,8 @@ class RKUSBDriver(Driver, BootstrapProtocol):
         while True:
             try:
                 processwrapper.check_output(
-                    self.loader.command_prefix +
-                    [self.tool, 'wl', '0x40', mf.get_remote_path()],
-                    print_on_silent_log=True
+                    self.loader.command_prefix + [self.tool, "wl", "0x40", mf.get_remote_path()],
+                    print_on_silent_log=True,
                 )
                 break
             except subprocess.CalledProcessError:
@@ -157,15 +155,15 @@ class UUUDriver(Driver, BootstrapProtocol):
     }
 
     image = attr.ib(default=None)
-    script = attr.ib(default='', validator=attr.validators.instance_of(str))
+    script = attr.ib(default="", validator=attr.validators.instance_of(str))
 
     def __attrs_post_init__(self):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('uuu-loader')
+            self.tool = self.target.env.config.get_tool("uuu-loader")
         else:
-            self.tool = 'uuu-loader'
+            self.tool = "uuu-loader"
 
     def on_activate(self):
         pass
@@ -174,18 +172,18 @@ class UUUDriver(Driver, BootstrapProtocol):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def load(self, filename=None):
         if filename is None and self.image is not None:
             filename = self.target.env.config.get_image_path(self.image)
         mf = ManagedFile(filename, self.loader)
         mf.sync_to_resource()
 
-        cmd = ['-b', self.script] if self.script else []
+        cmd = ["-b", self.script] if self.script else []
 
         processwrapper.check_output(
             self.loader.command_prefix + [self.tool] + cmd + [mf.get_remote_path()],
-            print_on_silent_log=True
+            print_on_silent_log=True,
         )
 
 
@@ -200,6 +198,7 @@ class BDIMXUSBDriver(Driver, BootstrapProtocol):
     by the first stage bootloader in SRAM. Accordingly, the image to upload
     must be specified explicitly.
     """
+
     bindings = {
         "loader": {"IMXUSBLoader", "NetworkIMXUSBLoader"},
     }
@@ -208,9 +207,9 @@ class BDIMXUSBDriver(Driver, BootstrapProtocol):
         super().__attrs_post_init__()
         # FIXME make sure we always have an environment or config
         if self.target.env:
-            self.tool = self.target.env.config.get_tool('imx_usb')
+            self.tool = self.target.env.config.get_tool("imx_usb")
         else:
-            self.tool = 'imx_usb'
+            self.tool = "imx_usb"
 
     def on_activate(self):
         pass
@@ -219,17 +218,18 @@ class BDIMXUSBDriver(Driver, BootstrapProtocol):
         pass
 
     @Driver.check_active
-    @step(args=['filename'])
+    @step(args=["filename"])
     def load(self, filename):
         mf = ManagedFile(filename, self.loader)
         mf.sync_to_resource()
 
         processwrapper.check_output(
-            self.loader.command_prefix + [
+            self.loader.command_prefix
+            + [
                 self.tool,
                 f"--bus={self.loader.busnum}",
                 f"--device={self.loader.devnum}",
                 mf.get_remote_path(),
             ],
-            print_on_silent_log=True
+            print_on_silent_log=True,
         )
