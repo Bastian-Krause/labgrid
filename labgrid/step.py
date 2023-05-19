@@ -16,9 +16,10 @@ class Steps:
         return self._stack[-1] if self._stack else None
 
     def get_new(self, title, tag, source, sourceinfo):
+        # pylint: disable=redefined-outer-name
         step = Step(
             title, level=len(self._stack) + 1, tag=tag, source=source, sourceinfo=sourceinfo
-        )  # pylint: disable=redefined-outer-name
+        )
         return step
 
     def push(self, step):  # pylint: disable=redefined-outer-name
@@ -51,9 +52,8 @@ steps = Steps()
 
 
 class StepEvent:
-    def __init__(
-        self, step, data, *, resource=None, stream=False
-    ):  # pylint: disable=redefined-outer-name
+    # pylint: disable=redefined-outer-name
+    def __init__(self, step, data, *, resource=None, stream=False):
         self.ts = monotonic()  # used to keep track of the events age
         self.step = step
         self.data = data
@@ -213,9 +213,8 @@ def step(*, title=None, args=[], result=False, tag=None):
             source = func.__self__ if inspect.ismethod(func) else bound.arguments.get("self")
             pathname = func.__code__.co_filename
             sourceinfo = (pathname, os.path.basename(pathname), func.__code__.co_firstlineno)
-            step = steps.get_new(
-                title, tag, source, sourceinfo
-            )  # pylint: disable=redefined-outer-name
+            # pylint: disable=redefined-outer-name
+            step = steps.get_new(title, tag, source, sourceinfo)
             # optionally pass the step object
             if "step" in signature.parameters:
                 _kwargs["step"] = step
