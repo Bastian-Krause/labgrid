@@ -57,6 +57,10 @@ jobs:
     - name: Test with pytest
       run: |
         TERM=xterm pytest --cov-config .coveragerc --cov=labgrid --local-sshmanager --ssh-username runner --crossbar-venv crossbar-venv -k "not test_docker_with_daemon"
+    - name: Code formatting
+      run: |
+        pip install black
+        black --check labgrid/ contrib/ examples/ helpers/ tests/
     - name: Build documentation
       run: |
         make -C doc clean
