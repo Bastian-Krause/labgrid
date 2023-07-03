@@ -49,6 +49,7 @@ jobs:
     - name: Install crossbar in virtualenv
       run: |
         virtualenv -p python3 crossbar-venv
+        crossbar-venv/bin/pip install --upgrade pip setuptools
         crossbar-venv/bin/pip install -r crossbar-requirements.txt
     - name: Lint with pylint
       run: |
