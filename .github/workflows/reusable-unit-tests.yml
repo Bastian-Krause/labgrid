@@ -42,8 +42,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no localhost echo OK
     - name: Install python dependencies
       run: |
-        # WIP: cython>=3.0.0 required for wsaccel, see https://github.com/methane/wsaccel/issues/30
-        python -m pip install --upgrade pip virtualenv cython>=3.0.0
+        python -m pip install --upgrade pip virtualenv
     - name: Install labgrid
       run: |
         pip install -e ".[dev]"

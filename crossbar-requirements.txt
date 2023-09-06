@@ -4,5 +4,3 @@ crossbar @ git+https://github.com/Bastian-Krause/crossbar@bst/python3.12; python
 autobahn<=22.4.1; python_version<"3.9"
 # WIP: use latest rc for python3.12
 numpy>=1.26.0b1; python_version>="3.12.0.rc1"
-# WIP: see https://github.com/methane/wsaccel/issues/30
-wsaccel @ git+https://github.com/methane/wsaccel@v0.6.4; python_version>="3.12.0.rc1"
