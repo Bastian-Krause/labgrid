@@ -40,7 +40,7 @@ dependencies = [
     "pyudev==0.22.0",
     "pyusb==1.2.1",
     "PyYAML==6.0.1",
-    "requests==2.26.0",
+    "requests==2.31.0",
     "xmodem==0.4.6",
 ]
 dynamic = ["version"]  # via setuptools_scm
