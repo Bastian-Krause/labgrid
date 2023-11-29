@@ -23,6 +23,7 @@ def test_onewire_resource_instance(target):
 
 def test_onewire_driver_instance(target, onewire_driver):
     isinstance(onewire_driver, OneWirePIODriver)
+    target.deactivate(onewire_driver)
 
 def test_onewire_set(onewire_driver):
     onewire_driver.set(True)

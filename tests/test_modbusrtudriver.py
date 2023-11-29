@@ -33,3 +33,5 @@ def test_driver(target, mocker):
 
     assert driver.instrument.serial.baudrate == 115200
     assert driver.instrument.serial.timeout == 0.25
+
+    target.deactivate(driver)

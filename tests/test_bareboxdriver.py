@@ -28,6 +28,7 @@ class TestBareboxDriver:
         assert res == ['success']
         res = d.run("test")
         assert res == (['success'], [], 0)
+        t.deactivate(d)
 
     def test_barebox_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
@@ -41,3 +42,4 @@ class TestBareboxDriver:
             res = d.run_check("test")
         res = d.run("test")
         assert res == (['error'], [], 1)
+        t.deactivate(d)

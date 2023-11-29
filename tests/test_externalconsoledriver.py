@@ -19,3 +19,4 @@ class TestExternalConsoleDriver:
         time.sleep(0.1)
         assert d.read(5, max_size=5) == data[:5]  # assert max_size limits read bytes
         d.close()
+        target.deactivate(d)

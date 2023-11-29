@@ -90,3 +90,8 @@ def test_qemu_read_write(qemu_target, qemu_driver, qemu_mock, qemu_version_mock)
     qemu_driver.write(b'abc')
 
     qemu_target.deactivate(qemu_driver)
+
+def test_qemu_atexit(qemu_target, qemu_driver, qemu_mock, qemu_version_mock):
+    qemu_target.activate(qemu_driver)
+    qemu_driver.on()
+    qemu_driver._atexit()

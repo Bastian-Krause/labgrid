@@ -21,3 +21,4 @@ def test_tasmota_driver(target, mocker):
     res.manager._available.add("test")
     driver = TasmotaPowerDriver(target, name=None)
     target.activate(driver)
+    target.deactivate(driver)

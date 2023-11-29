@@ -15,3 +15,4 @@ def test_resource_driver(target, mocker):
 
     mocker.patch('pyvisa.ResourceManager.open_resource', return_value=None)
     target.activate(driver)
+    target.deactivate(driver)

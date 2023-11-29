@@ -29,6 +29,7 @@ class TestUBootDriver:
         res = d.run("test")
         assert res == (['success'], [], 0)
         d._run.assert_called_once_with("test", timeout=30)
+        t.deactivate(d)
 
     def test_uboot_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
@@ -43,6 +44,7 @@ class TestUBootDriver:
         res = d.run("test")
         assert res == (['error'], [], 1)
         d._run.assert_called_once_with("test", timeout=30)
+        t.deactivate(d)
 
     def test_uboot_boot(self, target_with_fakeconsole):
         t = target_with_fakeconsole
@@ -54,3 +56,4 @@ class TestUBootDriver:
         assert d.console.txq.pop() == b"bar\n"
         with pytest.raises(Exception):
             d.boot('nop')
+        t.deactivate(d)
