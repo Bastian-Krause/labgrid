@@ -7,7 +7,7 @@ Wants=network-online.target
 Environment="PYTHONUNBUFFERED=1"
 # Should contain LG_COORDINATOR configuration
 EnvironmentFile=-/etc/environment
-ExecStart=/path/to/labgrid/venv/bin/labgrid-exporter /etc/labgrid/exporter.yaml
+ExecStart=/path/to/labgrid-venv/bin/labgrid-exporter /etc/labgrid/exporter.yaml
 Restart=on-failure
 RestartForceExitStatus=100
 RestartSec=30
