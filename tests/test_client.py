@@ -8,8 +8,6 @@ import pexpect
 
 psutil = pytest.importorskip("psutil")
 
-pytestmark = pytest.mark.crossbar
-
 def suspend_tree(pid):
     main = psutil.Process(pid)
     main.suspend()
@@ -22,12 +20,11 @@ def resume_tree(pid):
     for child in main.children(recursive=True):
         child.resume()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
-def test_startup(crossbar):
+def test_startup(coordinator):
     pass
 
 @pytest.fixture(scope='function')
-def place(crossbar):
+def place(coordinator):
     with pexpect.spawn('python -m labgrid.remote.client -p test create') as spawn:
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -65,26 +62,24 @@ def place_acquire(place, exporter):
         assert spawn.exitstatus == 0, spawn.before.strip()
 
 def test_connect_error():
-    with pexpect.spawn('python -m labgrid.remote.client -x ws://127.0.0.1:20409/ws places') as spawn:
+    with pexpect.spawn('python -m labgrid.remote.client -x 127.0.0.1:20409 places') as spawn:
         spawn.expect("Could not connect to coordinator")
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 1, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
-def test_connect_timeout(crossbar):
-    suspend_tree(crossbar.pid)
+def test_connect_timeout(coordinator):
+    suspend_tree(coordinator.pid)
     try:
         with pexpect.spawn('python -m labgrid.remote.client places') as spawn:
-            spawn.expect("connection closed during setup")
+            spawn.expect("connection attempt timed out before receiving SETTINGS frame")
             spawn.expect(pexpect.EOF)
             spawn.close()
             assert spawn.exitstatus == 1, spawn.before.strip()
     finally:
-        resume_tree(crossbar.pid)
+        resume_tree(coordinator.pid)
         pass
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_show(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test show') as spawn:
         spawn.expect("Place 'test':")
@@ -92,7 +87,6 @@ def test_place_show(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_alias(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test add-alias foo') as spawn:
         spawn.expect(pexpect.EOF)
@@ -104,7 +98,6 @@ def test_place_alias(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_comment(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test set-comment my comment') as spawn:
         spawn.expect(pexpect.EOF)
@@ -118,7 +111,6 @@ def test_place_comment(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_match(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test add-match "e1/g1/r1" "e2/g2/*"') as spawn:
         spawn.expect(pexpect.EOF)
@@ -137,7 +129,6 @@ def test_place_match(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_match_duplicates(place):
     # first given match should succeed, second should be skipped
     matches = (
@@ -158,7 +149,6 @@ def test_place_match_duplicates(place):
             spawn.close()
             assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_acquire(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test acquire') as spawn:
         spawn.expect(pexpect.EOF)
@@ -176,7 +166,6 @@ def test_place_acquire(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_acquire_enforce(place):
     with pexpect.spawn('python -m labgrid.remote.client -p test add-match does/not/exist') as spawn:
         spawn.expect(pexpect.EOF)
@@ -200,7 +189,6 @@ def test_place_acquire_enforce(place):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_acquire_broken(place, exporter):
     with pexpect.spawn('python -m labgrid.remote.client -p test add-match "*/Broken/*"') as spawn:
         spawn.expect(pexpect.EOF)
@@ -208,7 +196,7 @@ def test_place_acquire_broken(place, exporter):
         assert spawn.exitstatus == 0, spawn.before.strip()
 
     with pexpect.spawn('python -m labgrid.remote.client -p test acquire') as spawn:
-        spawn.expect('failed to acquire place test')
+        spawn.expect('Failed to acquire resources for place test')
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 1, spawn.before.strip()
@@ -220,7 +208,6 @@ def test_place_acquire_broken(place, exporter):
         print(spawn.before.decode())
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_place_release_from(monkeypatch, place, exporter):
     user = "test-user"
     host = "test-host"
@@ -267,23 +254,20 @@ def test_place_release_from(monkeypatch, place, exporter):
         before = spawn.before.decode("utf-8").strip()
         assert user not in before and not host in before, before
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
-def test_place_add_no_name(crossbar):
+def test_place_add_no_name(coordinator):
     with pexpect.spawn('python -m labgrid.remote.client create') as spawn:
         spawn.expect("missing place name")
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus != 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
-def test_place_del_no_name(crossbar):
+def test_place_del_no_name(coordinator):
     with pexpect.spawn('python -m labgrid.remote.client delete') as spawn:
-        spawn.expect("deletes require an exact place name")
+        spawn.expect("name was not a string")
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus != 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_remoteplace_target(place_acquire, tmpdir):
     from labgrid.environment import Environment
     p = tmpdir.join("config.yaml")
@@ -304,7 +288,6 @@ def test_remoteplace_target(place_acquire, tmpdir):
     remote_place = t.get_resource("RemotePlace")
     assert remote_place.tags == {"board": "bar"}
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_remoteplace_target_without_env(request, place_acquire):
     from labgrid import Target
     from labgrid.resource import RemotePlace
@@ -313,7 +296,6 @@ def test_remoteplace_target_without_env(request, place_acquire):
     remote_place = RemotePlace(t, name="test")
     assert remote_place.tags == {"board": "bar"}
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_resource_conflict(place_acquire, tmpdir):
     with pexpect.spawn('python -m labgrid.remote.client -p test2 create') as spawn:
         spawn.expect(pexpect.EOF)
@@ -335,7 +317,6 @@ def test_resource_conflict(place_acquire, tmpdir):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_reservation(place_acquire, tmpdir):
     with pexpect.spawn('python -m labgrid.remote.client reserve --shell board=bar name=test') as spawn:
         spawn.expect(pexpect.EOF)
@@ -413,7 +394,6 @@ def test_reservation(place_acquire, tmpdir):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_exporter_timeout(place, exporter):
     with pexpect.spawn('python -m labgrid.remote.client resources') as spawn:
         spawn.expect(pexpect.EOF)
@@ -451,7 +431,6 @@ def test_exporter_timeout(place, exporter):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_reservation_custom_config(place, exporter, tmpdir):
     p = tmpdir.join("config.yaml")
     p.write(
@@ -489,7 +468,6 @@ def test_reservation_custom_config(place, exporter, tmpdir):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-@pytest.mark.xfail(sys.version_info >= (3, 12), reason="latest crossbar release incompatible with python3.12+")
 def test_same_name_resources(place, exporter, tmpdir):
     with pexpect.spawn('python -m labgrid.remote.client -p test add-named-match "testhost/Many/NetworkService" "samename"') as spawn:
         spawn.expect(pexpect.EOF)
