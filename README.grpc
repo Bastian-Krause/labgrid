@@ -26,3 +26,4 @@ Next Steps
 [x] fix client shutdown on CTRL-C
 [ ] remove additional output on lgc lock
 [ ] set a reasonable name for the client logger
+[ ] create script/mechanism to generate grpc definitions from a defined minimum version
