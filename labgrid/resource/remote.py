@@ -38,7 +38,7 @@ class RemotePlaceManager(ResourceManager):
         # be the same).
         if not self.session:
             self.env = remote_place.target.env
-            self.url = os.environ.get("LG_CROSSBAR", "127.0.0.1:20408")
+            self.url = os.environ.get("LG_COORDINATOR", "127.0.0.1:20408")
             if self.env:
                 config = self.env.config
                 self.url = config.get_option('crossbar_url', self.url)
