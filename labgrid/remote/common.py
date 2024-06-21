@@ -258,7 +258,6 @@ class Place:
         place = Place.from_pb2(place_pb2)
         fields = attr.fields_dict(type(self))
         for k, v in place.asdict().items():
-            print(f"{k}: {v}")
             assert k in fields
             if k == "name":
                 # we cannot rename places
