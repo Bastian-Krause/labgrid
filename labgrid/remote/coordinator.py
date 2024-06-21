@@ -720,12 +720,6 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
             await context.abort(grpc.StatusCode.FAILED_PRECONDITION, f"Place {name} is not acquired")
         if fromuser and place.acquired != fromuser:
             return labgrid_coordinator_pb2.ReleasePlaceResponse()
-        if username != place.acquired:
-            await context.abort(
-                grpc.StatusCode.FAILED_PRECONDITION,
-                f"Place {name} is not acquired by {username}, acquired by",
-                {place.acquired},
-            )
 
         await self._release_resources(place, place.acquired_resources)
 
