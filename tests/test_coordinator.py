@@ -23,9 +23,9 @@ def channel_stub():
         for msg in messages:
             yield msg
         while True:
-           msg = queue.get()
-           yield msg
-           queue.task_done()
+            msg = queue.get()
+            yield msg
+            queue.task_done()
 
     stream = stub.ClientStream(generate_startup(queue))
     yield stub
@@ -96,9 +96,9 @@ def test_coordinator_exporter_session(coordinator, channel_stub):
         for msg in messages:
             yield msg
         while True:
-           msg = queue.get()
-           yield msg
-           queue.task_done()
+            msg = queue.get()
+            yield msg
+            queue.task_done()
 
     coordinator = channel_stub.ExporterStream(generate_startup(queue), wait_for_ready=True)
 
