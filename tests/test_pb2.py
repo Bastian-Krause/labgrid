@@ -37,7 +37,7 @@ def test_from_pb2_tags():
     assert place_new.tags == tags
 
 def test_from_pb2_matches():
-    rm = ResourceMatch("such","test","match")
+    rm = ResourceMatch("such", "test", "match")
     place_start = Place(name="testing-place", matches=[rm])
     pb2 = place_start.as_pb2()
     assert pb2.name == "testing-place", f"PB2 has wrong name: {pb2}"
@@ -59,12 +59,12 @@ def test_from_pb2_tags_deepcopy():
 def test_place_as_pb2_copy_with_match():
     tags = {"some": "test", "more": "values"}
     # Used by the RemotePlaceManager
-    place_start = Place(name="testing-place", tags=tags, comment="Hello", aliases={"some": "alias"}, matches = [ResourceMatch("testporter","somegroup","someclass")] )
+    place_start = Place(name="testing-place", tags=tags, comment="Hello", aliases={"some": "alias"}, matches=[ResourceMatch("testporter","somegroup","someclass")])
     out = labgrid_coordinator_pb2.ClientOutMessage()
     out.update.place.CopyFrom(place_start.as_pb2())
 
 def test_match_as_from_pb2():
-    rms = ResourceMatch("*","somegroup","someclass")
+    rms = ResourceMatch("*", "somegroup", "someclass")
     pb2 = rms.as_pb2()
     assert pb2
     rme = ResourceMatch.from_pb2(pb2)
