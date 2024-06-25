@@ -24,6 +24,6 @@ Next Steps
 [x] fix exporter shutdown on CTRL-C
 [x] fix exporter restart handling
 [x] fix client shutdown on CTRL-C
-[ ] remove additional output on lgc lock
+[x] remove additional output on lgc lock
 [ ] set a reasonable name for the client logger
 [ ] create script/mechanism to generate grpc definitions from a defined minimum version
