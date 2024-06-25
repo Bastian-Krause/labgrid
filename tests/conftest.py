@@ -101,7 +101,7 @@ def serial_driver_no_name(target, serial_port, mocker):
 def coordinator(tmpdir):
 
     spawn = pexpect.spawn(
-        f'labgrid-coordinator',
+        'labgrid-coordinator',
         logfile=Prefixer(sys.stdout.buffer, 'coordinator'),
         cwd=str(tmpdir))
     try:
