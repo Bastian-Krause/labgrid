@@ -1,4 +1,3 @@
-import pytest
 import pexpect
 
 def test_client_help():

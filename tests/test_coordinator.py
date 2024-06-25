@@ -1,11 +1,4 @@
-
-import os
-import re
-import sys
-import time
-
 import pytest
-import pexpect
 
 import grpc
 import labgrid.remote.generated.labgrid_coordinator_pb2_grpc as labgrid_coordinator_pb2_grpc

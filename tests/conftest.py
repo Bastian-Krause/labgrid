@@ -1,12 +1,10 @@
 import logging
-from pathlib import Path
 from signal import SIGTERM
 import sys
 import threading
 
 import pytest
 import pexpect
-import yaml
 
 from labgrid import Target
 from labgrid.driver import SerialDriver
