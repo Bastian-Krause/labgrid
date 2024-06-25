@@ -30,7 +30,7 @@ def test_from_pb2_tags():
     place_start = Place(name="testing-place", tags=tags)
     pb2 = place_start.as_pb2()
     assert pb2.name == "testing-place", f"PB2 has wrong name: {pb2}"
-    assert pb2.tags != None, f"PB2 has no tags field: {pb2}"
+    assert pb2.tags is not None, f"PB2 has no tags field: {pb2}"
     place_new = Place.from_pb2(pb2)
     assert place_new.name == "testing-place"
     assert place_new.tags == place_start.tags
@@ -41,7 +41,7 @@ def test_from_pb2_matches():
     place_start = Place(name="testing-place", matches=[rm])
     pb2 = place_start.as_pb2()
     assert pb2.name == "testing-place", f"PB2 has wrong name: {pb2}"
-    assert pb2.tags != None, f"PB2 has no tags field: {pb2}"
+    assert pb2.tags is not None, f"PB2 has no tags field: {pb2}"
     place_new = Place.from_pb2(pb2)
     assert place_new.name == "testing-place"
     assert place_new.tags == place_start.tags
