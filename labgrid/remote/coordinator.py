@@ -703,11 +703,6 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
     @locked
     async def ReleasePlace(self, request, context):
         name = request.placename
-        peer = context.peer()
-        try:
-            username = self.clients[peer].name
-        except KeyError:
-            await context.abort(grpc.StatusCode.FAILED_PRECONDITION, f"Peer {peer} does not have a valid session")
         print(request)
         fromuser = request.fromuser if request.HasField("fromuser") else None
         try:
