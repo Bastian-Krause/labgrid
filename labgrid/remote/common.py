@@ -136,7 +136,7 @@ class ResourceEntry:
         data = {
             "cls": pb2.cls,
             "params": build_dict_from_map(pb2.params),
-            "acquired": pb2.acquired,
+            "acquired": pb2.acquired or None,
             "avail": pb2.avail,
         }
         data["params"]["extra"] = build_dict_from_map(pb2.extra)
@@ -343,8 +343,7 @@ class Place:
             place.aliases.extend(self.aliases)
             place.comment = self.comment
             place.matches.extend(m.as_pb2() for m in self.matches)
-            if self.acquired:
-                place.acquired = self.acquired
+            place.acquired = self.acquired or ""
             place.acquired_resources.extend(acquired_resources)
             place.allowed.extend(self.allowed)
             place.changed = self.changed
@@ -372,7 +371,7 @@ class Place:
             comment=pb2.comment,
             tags=dict(pb2.tags),
             matches=[ResourceMatch.from_pb2(m) for m in pb2.matches],
-            acquired=pb2.acquired if pb2.HasField("acquired") else None,
+            acquired=pb2.acquired if pb2.HasField("acquired") and pb2.acquired else None,
             acquired_resources=acquired_resources,
             allowed=pb2.allowed,
             created=pb2.created,
