@@ -393,7 +393,9 @@ def test_reservation(place_acquire, tmpdir):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-def test_exporter_restart_locking(place, exporter, start_exporter):
+def test_exporter_restart_locking(place, start_exporter):
+    exporter = start_exporter()
+
     # add resource match
     with pexpect.spawn('python -m labgrid.remote.client -p test add-match testhost/Testport/NetworkSerialPort') as spawn:
         spawn.expect(pexpect.EOF)
