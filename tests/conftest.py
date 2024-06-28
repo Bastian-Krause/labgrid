@@ -123,7 +123,15 @@ def coordinator(tmpdir):
     reader.join()
 
 @pytest.fixture(scope='function')
-def exporter(tmpdir, coordinator):
+def exporter(tmpdir, coordinator, start_exporter):
+    yield start_exporter()
+
+
+@pytest.fixture(scope='function')
+def start_exporter(tmpdir, coordinator):
+    spawns = []
+    readers = []
+
     p = tmpdir.join("exports.yaml")
     p.write(
         """
@@ -143,22 +151,32 @@ def exporter(tmpdir, coordinator):
           username: "root"
     """
     )
-    spawn = pexpect.spawn(
-            f'{sys.executable} -m labgrid.remote.exporter --name testhost exports.yaml',
-            logfile=Prefixer(sys.stdout.buffer, 'exporter'),
-            cwd=str(tmpdir))
-    try:
-        spawn.expect('exporter name: testhost')
-    except:
-        print(f"exporter startup failed with {spawn.before}")
-        raise
-    reader = threading.Thread(target=keep_reading, name='exporter-reader', args=(spawn,), daemon=True)
-    reader.start()
-    yield spawn
-    print("stopping exporter")
-    spawn.close(force=True)
-    assert not spawn.isalive()
-    reader.join()
+
+    def _start_exporter():
+        spawn = pexpect.spawn(
+                f'{sys.executable} -m labgrid.remote.exporter --name testhost exports.yaml',
+                logfile=Prefixer(sys.stdout.buffer, 'exporter'),
+                cwd=str(tmpdir))
+        try:
+            spawn.expect('exporter name: testhost')
+        except:
+            print(f"exporter startup failed with {spawn.before}")
+            raise
+        reader = threading.Thread(target=keep_reading, name=f'exporter-reader-{spawn.pid}', args=(spawn,), daemon=True)
+        reader.start()
+
+        spawns.append(spawn)
+        readers.append(reader)
+
+        return spawn
+
+    yield _start_exporter
+
+    for spawn, reader in zip(spawns, readers):
+        print(f"stopping exporter pid={spawn.pid}")
+        spawn.close(force=True)
+        assert not spawn.isalive()
+        reader.join()
 
 def pytest_addoption(parser):
     parser.addoption("--sigrok-usb", action="store_true",
