@@ -159,6 +159,7 @@ def start_exporter(tmpdir, coordinator):
                 cwd=str(tmpdir))
         try:
             spawn.expect('exporter name: testhost')
+            spawn.expect('connected to exporter')
         except:
             print(f"exporter startup failed with {spawn.before}")
             raise
