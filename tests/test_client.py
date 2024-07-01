@@ -393,7 +393,12 @@ def test_reservation(place_acquire, tmpdir):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
-def test_exporter_restart_locking(place, start_exporter):
+def test_resource_acquired_state_on_exporter_restart(monkeypatch, place,start_exporter):
+    user = "test-user"
+    host = "test-host"
+    monkeypatch.setenv("LG_USERNAME", user)
+    monkeypatch.setenv("LG_HOSTNAME", host)
+
     exporter = start_exporter()
 
     # add resource match
@@ -407,13 +412,26 @@ def test_exporter_restart_locking(place, start_exporter):
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"acquired: None" in spawn.before
         assert b"Matching resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort/NetworkSerialPort)" in spawn.before
+
+    with pexpect.spawn('python -m labgrid.remote.client -p test -v resources') as spawn:
+        spawn.expect(pexpect.EOF)
+        spawn.close()
+        assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"Resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort[/NetworkSerialPort]):\r\n      {'acquired': None," in spawn.before
 
     # lock place (and its resources)
     with pexpect.spawn('python -m labgrid.remote.client -p test acquire') as spawn:
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
+
+    with pexpect.spawn('python -m labgrid.remote.client -p test -v resources') as spawn:
+        spawn.expect(pexpect.EOF)
+        spawn.close()
+        assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"Resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort[/NetworkSerialPort]):\r\n      {'acquired': 'test'," in spawn.before
 
     # stop exporter
     exporter.close()
@@ -422,12 +440,19 @@ def test_exporter_restart_locking(place, start_exporter):
     # start exporter again
     exporter = start_exporter()
 
+    with pexpect.spawn('python -m labgrid.remote.client -p test -v resources') as spawn:
+        spawn.expect(pexpect.EOF)
+        spawn.close()
+        assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"Resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort[/NetworkSerialPort]):\r\n      {'acquired': 'test'," in spawn.before
+
     # make sure matching resource is still found
     with pexpect.spawn('python -m labgrid.remote.client -p test show') as spawn:
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
-        assert b"Matching resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort/NetworkSerialPort)" in spawn.before
+        assert f"acquired: {host}/{user}" in spawn.before.decode("utf-8")
+        assert b"Acquired resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort/NetworkSerialPort)" in spawn.before
 
     # release place
     with pexpect.spawn('python -m labgrid.remote.client -p test release') as spawn:
@@ -435,11 +460,18 @@ def test_exporter_restart_locking(place, start_exporter):
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
 
+    with pexpect.spawn('python -m labgrid.remote.client -p test -v resources') as spawn:
+        spawn.expect(pexpect.EOF)
+        spawn.close()
+        assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"Resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort[/NetworkSerialPort]):\r\n      {'acquired': None," in spawn.before
+
     # make sure matching resource is still found
     with pexpect.spawn('python -m labgrid.remote.client -p test show') as spawn:
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
+        assert b"acquired: None" in spawn.before
         assert b"Matching resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort/NetworkSerialPort)" in spawn.before
 
     # place should now be acquirable again
@@ -447,6 +479,12 @@ def test_exporter_restart_locking(place, start_exporter):
         spawn.expect(pexpect.EOF)
         spawn.close()
         assert spawn.exitstatus == 0, spawn.before.strip()
+
+    with pexpect.spawn('python -m labgrid.remote.client -p test release') as spawn:
+        spawn.expect(pexpect.EOF)
+        spawn.close()
+        assert spawn.exitstatus == 0, spawn.before.strip()
+
 
 def test_exporter_timeout(place, exporter):
     with pexpect.spawn('python -m labgrid.remote.client resources') as spawn:
