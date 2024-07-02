@@ -496,6 +496,7 @@ def test_exporter_timeout(place, exporter):
 
     suspend_tree(exporter.pid)
     try:
+        # FIXME: either increase this timeout to >=90 or somehow set the timeouts in gRPC channels lower
         time.sleep(30)
 
         # the unresponsive exporter should be kicked by now
