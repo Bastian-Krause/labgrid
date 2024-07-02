@@ -61,7 +61,11 @@ def test_place_as_pb2_copy_with_match():
     # Used by the RemotePlaceManager
     place_start = Place(name="testing-place", tags=tags, comment="Hello", aliases={"some": "alias"}, matches=[ResourceMatch("testporter","somegroup","someclass")])
     out = labgrid_coordinator_pb2.ClientOutMessage()
-    out.update.place.CopyFrom(place_start.as_pb2())
+
+    update_response = labgrid_coordinator_pb2.UpdateResponse()
+    update_response.place.CopyFrom(place_start.as_pb2())
+
+    out.updates.append(update_response)
 
 def test_match_as_from_pb2():
     rms = ResourceMatch("*", "somegroup", "someclass")
