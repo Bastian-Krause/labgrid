@@ -159,7 +159,10 @@ def test_coordinator_create_reservation(coordinator, coordinator_place):
     tags = {"board": "test"}
     stub = coordinator_place
     res = stub.SetPlaceTags(labgrid_coordinator_pb2.SetPlaceTagsRequest(placename="test", tags=tags))
-    spec = "board=test"
     assert res
-    res = stub.CreateReservation(labgrid_coordinator_pb2.CreateReservationRequest(spec=spec, prio=1.0))
+    res = stub.CreateReservation(labgrid_coordinator_pb2.CreateReservationRequest(filters={
+        "main": labgrid_coordinator_pb2.Reservation.Filter(filter={"board": "test"}),
+    }, prio=1.0))
     assert res
+    res: labgrid_coordinator_pb2.CreateReservationResponse
+    assert len(res.reservation.token) > 0

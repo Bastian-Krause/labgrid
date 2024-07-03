@@ -75,22 +75,38 @@ def test_match_as_from_pb2():
     assert rms == rme
 
 def test_reservation_as_pb2():
-    reservation = Reservation("test", filters={"some": "filter"}, allocations={"some": "allocation"})
+    reservation = Reservation(
+        owner="test",
+        filters={
+            "main": {"some": "filter"},
+        },
+        allocations={
+            "main": ["the-place"],
+        },
+    )
     pb2 = reservation.as_pb2()
     assert pb2.owner == "test"
     assert pb2.token == reservation.token
     assert pb2.state == reservation.state.value
-    assert pb2.filters == reservation.filters
+    assert pb2.filters["main"].filter == {"some": "filter"}
     assert pb2.created == reservation.created
     assert pb2.timeout == reservation.timeout
 
 def test_reservation_as_from_pb2():
-    resold = Reservation("test", filters={"some": "filter"}, allocations={"some": "allocation"})
+    resold = Reservation(
+        owner="test",
+        filters={
+            "main": {"some": "filter"},
+        },
+        allocations={
+            "main": ["the-place"],
+        },
+    )
     pb2 = resold.as_pb2()
     assert pb2.owner == resold.owner
     assert pb2.token == resold.token
     assert pb2.state == resold.state.value
-    assert pb2.filters == resold.filters
+    assert pb2.filters["main"].filter == {"some": "filter"}
     assert pb2.created == resold.created
     assert pb2.timeout == resold.timeout
 
@@ -99,7 +115,7 @@ def test_reservation_as_from_pb2():
     assert resnew.owner == resold.owner
     assert resnew.token == resold.token
     assert resnew.state == resold.state
-    assert resnew.filters == resold.filters
+    assert resnew.filters["main"] == resold.filters["main"]
     assert resnew.created == resold.created
     assert resnew.timeout == resold.timeout
 
