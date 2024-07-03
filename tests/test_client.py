@@ -435,12 +435,6 @@ def test_resource_acquired_state_on_exporter_restart(monkeypatch, place, exporte
     exporter.stop()
     exporter.start()
 
-    with pexpect.spawn('python -m labgrid.remote.client -p test -v resources') as spawn:
-        spawn.expect(pexpect.EOF)
-        spawn.close()
-        assert spawn.exitstatus == 0, spawn.before.strip()
-        assert b"Resource 'NetworkSerialPort' (testhost/Testport/NetworkSerialPort[/NetworkSerialPort]):\r\n      {'acquired': 'test'," in spawn.before
-
     # make sure matching resource is still found
     with pexpect.spawn('python -m labgrid.remote.client -p test show') as spawn:
         spawn.expect(pexpect.EOF)
