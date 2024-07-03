@@ -597,6 +597,8 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
         return labgrid_coordinator_pb2.DeletePlaceMatchResponse()
 
     async def _acquire_resource(self, place, resource):
+        assert self.lock.locked()
+
         # this triggers an update from the exporter which is published
         # to the clients
         request = labgrid_coordinator_pb2.ExporterSetAcquiredRequest()
@@ -610,6 +612,8 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
             raise ExporterError("failed to acquire {resource}")
 
     async def _acquire_resources(self, place, resources):
+        assert self.lock.locked()
+
         resources = resources.copy()  # we may modify the list
         # all resources need to be free
         for resource in resources:
@@ -634,6 +638,8 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
         return True
 
     async def _release_resources(self, place, resources, callback=True):
+        assert self.lock.locked()
+
         resources = resources.copy()  # we may modify the list
 
         for resource in resources:
