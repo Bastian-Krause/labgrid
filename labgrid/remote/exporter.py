@@ -787,7 +787,7 @@ class Exporter:
         # so set it as well.
         # Use GRPC_VERBOSITY=DEBUG GRPC_TRACE=http_keepalive for debugging.
         channel_options = [
-            #("grpc.keepalive_time_ms", 7500),  # 7.5 seconds
+            ("grpc.keepalive_time_ms", 7500),  # 7.5 seconds
             ("grpc.keepalive_timeout_ms", 10000),  # 10 seconds
             ("grpc.http2.ping_timeout_ms", 10000),  # 10 seconds
             ("grpc.http2.max_pings_without_data", 0),  # no limit
