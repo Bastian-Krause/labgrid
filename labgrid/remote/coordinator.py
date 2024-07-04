@@ -6,7 +6,6 @@ import asyncio
 import traceback
 from enum import Enum
 from functools import wraps
-from weakref import WeakSet
 
 import attr
 import grpc
@@ -70,7 +69,6 @@ class ExporterSession(RemoteSession):
             new = None
             if old.acquired:
                 old.orphaned = True
-                self.coordinator.orphaned_resources.add(old)
             try:
                 del group[resourcename]
             except KeyError:
@@ -196,10 +194,6 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
         self.exporters: dict[str, ExporterSession] = {}
         self.clients: dict[str, ClientSession] = {}
         self.load()
-
-        # Use a WeakSet to automatically remove orphaned resources when Places
-        # are unlocked or deleted.
-        self.orphaned_resources: WeakSet[ResourceImport] = WeakSet()
 
         self.poll_task = asyncio.get_event_loop().create_task(self.poll())
 
@@ -638,6 +632,8 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
                 pass
 
         for resource in resources:
+            if resource.orphaned:
+                continue
             try:
                 # this triggers an update from the exporter which is published
                 # to the clients
@@ -662,35 +658,42 @@ class Coordinator(labgrid_coordinator_pb2_grpc.CoordinatorServicer):
     async def _reacquire_orphaned_resources(self):
         assert self.lock.locked()
 
-        for orphan in self.orphaned_resources:
-            # is the exporter connected again?
-            exporter = self.get_exporter_by_name(orphan.path[0])
-            if not exporter:
-                continue
+        for place in self.places.values():
+            changed = False
 
-            # does the resource exist again?
-            try:
-                resource = exporter.groups[orphan.path[1]][orphan.path[3]]
-            except KeyError:
-                continue
+            for idx, resource in enumerate(place.acquired_resources):
+                if not resource.orphaned:
+                    continue
 
-            if resource.acquired:
-                # this should only happen when resources become broken
-                logging.debug("ignoring broken resource %s for place %s", resource, orphan.acquired)
-                continue
+                # is the exporter connected again?
+                exporter = self.get_exporter_by_name(resource.path[0])
+                if not exporter:
+                    continue
 
-            try:
-                place = self.places[orphan.acquired]
-                await self._acquire_resource(place, resource)
-                place.acquired_resources.remove(orphan)
-                place.acquired_resources.append(resource)
+                # does the resource exist again?
+                try:
+                    new_resource = exporter.groups[resource.path[1]][resource.path[3]]
+                except KeyError:
+                    continue
+
+                if new_resource.acquired:
+                    # this should only happen when resources become broken
+                    logging.debug("ignoring acquired/broken resource %s for place %s", new_resource, place.name)
+                    continue
+
+                try:
+                    await self._acquire_resource(place, new_resource)
+                    place.acquired_resources[idx] = new_resource
+                except Exception:
+                    logging.exception("failed to reacquire orphaned resource %s for place %s", new_resource, place.name)
+                    break
+
+                logging.info("reacquired orphaned resource %s for place %s", new_resource, place.name)
+                changed = True
+
+            if changed:
                 self._publish_place(place)
                 self.save_later()
-            except Exception:
-                logging.exception("failed to reacquire orphaned resource %s for place %s", resource, orphan.acquired)
-                continue
-
-            logging.info("reacquired orphaned resource %s for place %s", resource, place.name)
 
     @locked
     async def AcquirePlace(self, request, context):
