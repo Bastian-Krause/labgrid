@@ -243,3 +243,29 @@ class RawNetworkInterfaceDriver(Driver):
         Returns the MAC address of the bound network interface resource.
         """
         return self.get_statistics()["address"]
+
+    @Driver.check_active
+    def get_ethtool_settings(self):
+        """
+        Returns settings via ethtool of the bound network interface resource.
+        """
+        cmd = self.iface.command_prefix + [
+            "ethtool",
+            "--json",
+            self.iface.ifname]
+        output = subprocess.check_output(cmd, encoding="utf-8")
+        return json.loads(output)[0]
+
+    @Driver.check_active
+    def get_ethtool_eee_settings(self):
+        """
+        Returns Energy-Efficient Ethernet settings via ethtool of the bound network interface
+        resource.
+        """
+        cmd = self.iface.command_prefix + [
+            "ethtool",
+            "--show-eee",
+            "--json",
+            self.iface.ifname]
+        output = subprocess.check_output(cmd, encoding="utf-8")
+        return json.loads(output)[0]
