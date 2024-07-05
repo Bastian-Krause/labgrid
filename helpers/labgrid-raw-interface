@@ -32,18 +32,18 @@ def get_denylist():
     return denylist
 
 
-def main(program, ifname, count, timeout=0):
-    if not ifname:
+def main(program, options):
+    if not options.ifname:
         raise ValueError("Empty interface name.")
-    if any((c == "/" or c.isspace()) for c in ifname):
-        raise ValueError(f"Interface name '{ifname}' contains invalid characters.")
-    if len(ifname) > 16:
-        raise ValueError(f"Interface name '{ifname}' is too long.")
+    if any((c == "/" or c.isspace()) for c in options.ifname):
+        raise ValueError(f"Interface name '{options.ifname}' contains invalid characters.")
+    if len(options.ifname) > 16:
+        raise ValueError(f"Interface name '{options.ifname}' is too long.")
 
     denylist = get_denylist()
 
-    if ifname in denylist:
-        raise ValueError(f"Interface name '{ifname}' is denied in denylist.")
+    if options.ifname in denylist:
+        raise ValueError(f"Interface name '{options.ifname}' is denied in denylist.")
 
     programs = ["tcpreplay", "tcpdump"]
     if program not in programs:
@@ -54,12 +54,12 @@ def main(program, ifname, count, timeout=0):
     ]
 
     if program == "tcpreplay":
-        args.append(f"--intf1={ifname}")
+        args.append(f"--intf1={options.ifname}")
         args.append('-')
 
     if program == "tcpdump":
         args.append("-n")
-        args.append(f"--interface={ifname}")
+        args.append(f"--interface={options.ifname}")
         # Write out each packet as it is received
         args.append("--packet-buffered")
         # Capture complete packets (for compatibility with older tcpdump versions)
@@ -67,16 +67,16 @@ def main(program, ifname, count, timeout=0):
         args.append("-w")
         args.append('-')
 
-        if count:
+        if options.count:
             args.append("-c")
-            args.append(str(count))
+            args.append(str(options.count))
 
-        if timeout:
+        if options.timeout:
             # The duration is implemented by specifying the number of seconds
             # before rotating the dump file, but limiting the number of files
             # to 1
             args.append("-G")
-            args.append(str(timeout))
+            args.append(str(options.timeout))
             args.append("-W")
             args.append("1")
 
@@ -95,13 +95,21 @@ if __name__ == "__main__":
         default=False,
         help="enable debug mode"
     )
-    parser.add_argument('program', type=str, help='program to run, either tcpreplay or tcpdump')
-    parser.add_argument('interface', type=str, help='interface name')
-    parser.add_argument('count', nargs="?", type=int, default=None, help='amount of frames to capture while recording')
-    parser.add_argument('--timeout', type=int, default=None, help="Amount of time to capture while recording. 0 means capture forever")
+    subparsers = parser.add_subparsers(dest='program', help='program to run')
+
+    # tcpdump
+    tcpdump_parser = subparsers.add_parser('tcpdump')
+    tcpdump_parser.add_argument('ifname', type=str, help='interface name')
+    tcpdump_parser.add_argument('count', type=int, default=None, help='amount of frames to capture while recording')
+    tcpdump_parser.add_argument('--timeout', type=int, default=None, help='Amount of time to capture while recording. 0 means capture forever')
+
+    # tcpreplay
+    tcpreplay_parser = subparsers.add_parser('tcpreplay')
+    tcpreplay_parser.add_argument('ifname', type=str, help='interface name')
+
     args = parser.parse_args()
     try:
-        main(args.program, args.interface, args.count, args.timeout)
+        main(args.program, args)
     except Exception as e:  # pylint: disable=broad-except
         if args.debug:
             import traceback
