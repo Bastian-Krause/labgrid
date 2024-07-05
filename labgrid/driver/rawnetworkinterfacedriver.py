@@ -2,6 +2,7 @@
 import contextlib
 import json
 import subprocess
+import time
 
 import attr
 
@@ -10,6 +11,7 @@ from ..factory import target_factory
 from ..step import step
 from ..util.helper import processwrapper
 from ..util.managedfile import ManagedFile
+from ..util.timeout import Timeout
 from ..resource.common import NetworkResource
 
 
@@ -24,6 +26,12 @@ class RawNetworkInterfaceDriver(Driver):
         super().__attrs_post_init__()
         self._record_handle = None
         self._replay_handle = None
+
+    def on_activate(self):
+        self._set_interface("up")
+
+    def on_deactivate(self):
+        self._set_interface("down")
 
     def _wrap_command(self, args):
         wrapper = ["sudo", "labgrid-raw-interface"]
@@ -51,6 +59,43 @@ class RawNetworkInterfaceDriver(Driver):
                 cmd=proc.args,
                 stderr=err,
             )
+
+    @step()
+    def _wait_for_interface_state(self, state, timeout=5.0):
+        timeout = Timeout(timeout)
+
+        while True:
+            cmd = self.iface.command_prefix + [
+                "cat",
+                f"/sys/class/net/{self.iface.ifname}/operstate"]
+            output = processwrapper.check_output(cmd).decode("ascii")
+            if output.strip() == state:
+                return
+            if timeout.expired:
+                raise TimeoutError(f"interface {self.iface.ifname} did not go {state} within {timeout.timeout} seconds")
+
+            time.sleep(0.5)
+
+    def wait_for_interface_state(self, state, timeout=3.0):
+        self._wait_for_interface_state(state, timeout)
+
+    @step(args=["state", "timeout"])
+    def _set_interface(self, state, timeout=3.0):
+        cmd = ["ip", self.iface.ifname, state]
+        cmd = self._wrap_command(cmd)
+        subprocess.check_call(cmd)
+
+        self.wait_for_interface_state(state, timeout)
+
+    @Driver.check_active
+    def set_interface_up(self, timeout=3.0):
+        """Set bound interface up."""
+        self._set_interface("up", timeout)
+
+    @Driver.check_active
+    def set_interface_down(self, timeout=3.0):
+        """Set bound interface down."""
+        self._set_interface("down", timeout)
 
     @Driver.check_active
     @step(args=["filename", "count", "timeout"])
