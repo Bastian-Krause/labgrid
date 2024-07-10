@@ -93,6 +93,11 @@ class RawNetworkInterfaceDriver(Driver):
         """
         try:
             self._stop(self._record_handle, timeout=timeout)
+        except subprocess.TimeoutExpired:
+            # If live streaming packets, there is no reason to wait for tcpdump
+            # to finish, so expect a timeout if piping to stdout
+            if self._record_handle.stdout is None:
+                raise
         finally:
             self._record_handle = None
 
@@ -115,15 +120,7 @@ class RawNetworkInterfaceDriver(Driver):
         try:
             yield self.start_record(filename, count=count, timeout=timeout)
         finally:
-            # If live streaming packets, there is no reason to wait for tcpdump
-            # to finish, so terminate it as soon as the context is left
-            try:
-                self.stop_record(timeout=0 if filename is None else None)
-            except subprocess.TimeoutExpired:
-                # A timeout is expected if the context is exited early while
-                # piping to stdout
-                if filename is not None:
-                    raise
+            self.stop_record(timeout=0 if filename is None else None)
 
     @Driver.check_active
     @step(args=["filename"])
