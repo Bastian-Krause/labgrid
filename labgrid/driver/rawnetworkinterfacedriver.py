@@ -98,6 +98,17 @@ class RawNetworkInterfaceDriver(Driver):
         self._set_interface("down", timeout)
 
     @Driver.check_active
+    def set_interface_link_mode(self, speed, duplex="full"):
+        """Set fixed speed and duplex on interface."""
+        cmd = ["ethtool", self.iface.ifname, "speed", speed]
+        cmd = self._wrap_command(cmd)
+        subprocess.check_call(cmd)
+
+        cmd = ["ethtool", self.iface.ifname, "duplex", duplex]
+        cmd = self._wrap_command(cmd)
+        subprocess.check_call(cmd)
+
+    @Driver.check_active
     @step(args=["filename", "count", "timeout"])
     def start_record(self, filename, *, count=None, timeout=None):
         """

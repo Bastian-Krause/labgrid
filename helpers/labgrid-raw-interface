@@ -45,7 +45,7 @@ def main(program, options):
     if options.ifname in denylist:
         raise ValueError(f"Interface name '{options.ifname}' is denied in denylist.")
 
-    programs = ["tcpreplay", "tcpdump", "ip"]
+    programs = ["tcpreplay", "tcpdump", "ip", "ethtool"]
     if program not in programs:
         raise ValueError(f"Invalid program {program} called with wrapper, valid programs are: {programs}")
 
@@ -87,6 +87,15 @@ def main(program, options):
         args.append(options.ifname)
         args.append(options.action)
 
+    if program == "ethtool":
+        if not options.value.isalnum():
+            raise ValueError(f"Value '{options.value}' contains invalid characters")
+
+        args.append("--change")
+        args.append(options.ifname)
+        args.append(options.action)
+        args.append(options.value)
+
     try:
         os.execvp(args[0], args)
     except FileNotFoundError as e:
@@ -118,6 +127,12 @@ if __name__ == "__main__":
     ip_parser = subparsers.add_parser('ip')
     ip_parser.add_argument('ifname', type=str, help='interface name')
     ip_parser.add_argument('action', type=str, choices=['up', 'down'], help='action, one of {%(choices)s}')
+
+    # ethtool
+    ip_parser = subparsers.add_parser('ethtool')
+    ip_parser.add_argument('ifname', type=str, help='interface name')
+    ip_parser.add_argument('action', type=str, choices=['speed', 'duplex'], help='action, one of {%(choices)s}')
+    ip_parser.add_argument('value', type=str, help='value for action')
 
     args = parser.parse_args()
     try:
