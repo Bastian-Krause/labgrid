@@ -2038,7 +2038,7 @@ def main():
             signal.signal(signal.SIGTERM, lambda *_: sys.exit(0))
 
             try:
-                coordinator_url = args.coordinator or env.config.get_option("")
+                coordinator_url = args.coordinator or env.config.get_option("coordinator_url")
             except (AttributeError, KeyError):
                 # in case of no env or not set, use LG_COORDINATOR env variable or default
                 coordinator_url = os.environ.get("LG_COORDINATOR", "127.0.0.1:20408")

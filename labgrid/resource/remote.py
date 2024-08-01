@@ -41,7 +41,7 @@ class RemotePlaceManager(ResourceManager):
             self.url = os.environ.get("LG_COORDINATOR", "127.0.0.1:20408")
             if self.env:
                 config = self.env.config
-                self.url = config.get_option('crossbar_url', self.url)
+                self.url = config.get_option("coordinator_url", self.url)
             self._start()
         place = self.session.get_place(remote_place.name)  # pylint: disable=no-member
         resource_entries = self.session.get_target_resources(place)  # pylint: disable=no-member
