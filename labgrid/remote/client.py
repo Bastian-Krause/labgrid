@@ -23,6 +23,7 @@ from getpass import getuser
 from collections import defaultdict, OrderedDict
 from datetime import datetime
 from pprint import pformat
+from typing import Any, Dict
 
 import attr
 import grpc
@@ -1560,8 +1561,13 @@ def ensure_event_loop(external_loop=None):
     return loop
 
 
-def start_session(url, extra, debug=False, loop=None):
+def start_session(
+    url: str, *, extra: Dict[str, Any] = None, debug: bool = False, loop: "asyncio.AbstractEventLoop | None" = None
+):
     loop = ensure_event_loop(loop)
+
+    if extra is None:
+        extra = {}
 
     if debug:
         loop.set_debug(True)
