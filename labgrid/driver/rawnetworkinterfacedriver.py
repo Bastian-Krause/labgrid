@@ -95,14 +95,26 @@ class RawNetworkInterfaceDriver(Driver):
         self._wait_state(expected_state, timeout=timeout)
 
     @Driver.check_active
-    def set_interface_up(self):
-        """Set bound interface up."""
-        self._set_interface("up")
+    def get_ethtool_settings(self):
+        """
+        Returns settings via ethtool of the bound network interface resource.
+        """
+        cmd = self.iface.command_prefix + ["ethtool", "--json", self.iface.ifname]
+        output = subprocess.check_output(cmd, encoding="utf-8")
+        return json.loads(output)[0]
 
     @Driver.check_active
-    def set_interface_down(self):
-        """Set bound interface down."""
-        self._set_interface("down")
+    @step(args=["settings"])
+    def ethtool_configure(self, **settings):
+        """
+        Change settings on interface.
+
+        Supported settings are described in ethtool(8) --change (use "_" instead of "-").
+        """
+        cmd = ["ethtool", "change", self.iface.ifname]
+        cmd += [item.replace("_", "-") for pair in settings.items() for item in pair]
+        cmd = self._wrap_command(cmd)
+        subprocess.check_call(cmd)
 
     def _stop(self, proc, *, timeout=None):
         assert proc is not None
