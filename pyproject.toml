@@ -257,6 +257,10 @@ extend-exclude = [
   "envs",
   "labgrid/remote/generated",
 ]
+include = [
+  "**/pyproject.toml",
+  "labgrid/remote/**/*.py",
+]
 
 [tool.ruff.lint]
 select = ["B", "E", "F", "I", "SIM", "UP"]
