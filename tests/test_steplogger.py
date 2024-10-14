@@ -3,6 +3,8 @@ import pytest
 import time
 import re
 
+from .helper import pexpect_spawn
+
 @pytest.fixture
 def power_env(tmpdir):
     p = tmpdir.join("config.yaml")
@@ -32,7 +34,7 @@ def test_step_logger(power_env, pw_cycle_test):
     from colors import strip_color
     # step reporter is called when -vv is given
     # -s is necessary for manual power driver confirmation
-    with pexpect.spawn('pytest -vvs --lg-env {env} {test}'
+    with pexpect_spawn('pytest -vvs --lg-env {env} {test}'
                        .format(env=power_env, test=pw_cycle_test)) as spawn:
 
         # rough match

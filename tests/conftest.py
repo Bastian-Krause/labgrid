@@ -11,6 +11,8 @@ from labgrid.driver import SerialDriver
 from labgrid.resource import RawSerialPort, NetworkSerialPort
 from labgrid.driver.fake import FakeConsoleDriver
 
+from .helper import pexpect_spawn
+
 psutil = pytest.importorskip("psutil")
 
 @pytest.fixture(scope="session")
@@ -128,7 +130,7 @@ class Exporter(LabgridComponent):
         assert self.spawn is None
         assert self.reader is None
 
-        self.spawn = pexpect.spawn(
+        self.spawn = pexpect_spawn(
             f'labgrid-exporter --name testhost {self.config}',
             logfile=Prefixer(sys.stdout.buffer, 'exporter'),
             cwd=self.cwd)
@@ -146,7 +148,7 @@ class Coordinator(LabgridComponent):
         assert self.spawn is None
         assert self.reader is None
 
-        self.spawn = pexpect.spawn(
+        self.spawn = pexpect_spawn(
             'labgrid-coordinator',
             logfile=Prefixer(sys.stdout.buffer, 'coordinator'),
             cwd=self.cwd)

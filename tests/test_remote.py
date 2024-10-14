@@ -1,7 +1,9 @@
 import pexpect
 
+from .helper import pexpect_spawn
+
 def test_client_help():
-    with pexpect.spawn('python -m labgrid.remote.client --help') as spawn:
+    with pexpect_spawn('python -m labgrid.remote.client --help') as spawn:
         spawn.expect('usage')
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -9,7 +11,7 @@ def test_client_help():
         assert spawn.signalstatus is None
 
 def test_exporter_help():
-    with pexpect.spawn('python -m labgrid.remote.exporter --help') as spawn:
+    with pexpect_spawn('python -m labgrid.remote.exporter --help') as spawn:
         spawn.expect('usage')
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -30,7 +32,7 @@ def test_exporter_start_coordinator_unreachable(monkeypatch, tmpdir):
     """
     )
 
-    with pexpect.spawn(f"python -m labgrid.remote.exporter {config}", cwd=tmpdir) as spawn:
+    with pexpect_spawn(f"python -m labgrid.remote.exporter {config}", cwd=tmpdir) as spawn:
         spawn.expect("coordinator is unavailable", timeout=10)
         spawn.expect(pexpect.EOF)
         spawn.close()

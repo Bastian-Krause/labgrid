@@ -1,5 +1,7 @@
 import pexpect
 
+from .helper import pexpect_spawn
+
 def test_with_feature(tmpdir):
     conf = tmpdir.join("config.yaml")
     conf.write(
@@ -22,7 +24,7 @@ def test(env):
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 passed")
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -50,7 +52,7 @@ def test(env):
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 skipped")
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -78,7 +80,7 @@ def test(env):
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 skipped")
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -107,7 +109,7 @@ def test(env):
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 passed")
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -141,7 +143,7 @@ class TestMulti:
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 passed")
         spawn.expect(pexpect.EOF)
         spawn.close()
@@ -174,7 +176,7 @@ class TestMulti:
 """
     )
 
-    with pexpect.spawn(f'pytest --lg-env {conf} {test}') as spawn:
+    with pexpect_spawn(f'pytest --lg-env {conf} {test}') as spawn:
         spawn.expect("1 skipped")
         spawn.expect(pexpect.EOF)
         spawn.close()
