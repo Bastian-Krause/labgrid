@@ -1,4 +1,5 @@
 import logging
+import shutil
 from signal import SIGTERM
 import sys
 import threading
@@ -124,12 +125,15 @@ class Exporter(LabgridComponent):
         super().__init__(cwd)
         self.config = config
 
-    def start(self):
+    def start(self, prefix=None):
         assert self.spawn is None
         assert self.reader is None
 
+        cmd = ['labgrid-exporter', '--name', 'testhost', self.config]
+        if prefix:
+            cmd = prefix + [shutil.which(cmd[0])] + cmd[1:]
         self.spawn = pexpect.spawn(
-            f'labgrid-exporter --name testhost {self.config}',
+            ' '.join(cmd),
             logfile=Prefixer(sys.stdout.buffer, 'exporter'),
             cwd=self.cwd)
         try:
@@ -142,12 +146,15 @@ class Exporter(LabgridComponent):
 
 
 class Coordinator(LabgridComponent):
-    def start(self):
+    def start(self, prefix=None):
         assert self.spawn is None
         assert self.reader is None
 
+        cmd = ['labgrid-coordinator']
+        if prefix:
+            cmd = prefix + [shutil.which(cmd[0])] + cmd[1:]
         self.spawn = pexpect.spawn(
-            'labgrid-coordinator',
+            ' '.join(cmd),
             logfile=Prefixer(sys.stdout.buffer, 'coordinator'),
             cwd=self.cwd)
         try:
@@ -195,17 +202,25 @@ def serial_driver_no_name(target, serial_port, mocker):
     target.activate(s)
     return s
 
+@pytest.fixture(scope="module")
+def cov_prefix(pytestconfig):
+    if pytestconfig.pluginmanager.get_plugin("pytest_cov"):
+        coverage_data = pytestconfig.rootdir.join(".coverage")
+        return ["coverage", "run", "--parallel-mode", f"--data-file={coverage_data}"]
+
+    return None
+
 @pytest.fixture(scope='function')
-def coordinator(tmpdir):
+def coordinator(tmpdir, cov_prefix):
     coordinator = Coordinator(tmpdir)
-    coordinator.start()
+    coordinator.start(prefix=cov_prefix)
 
     yield coordinator
 
     coordinator.stop()
 
 @pytest.fixture(scope='function')
-def exporter(tmpdir, coordinator):
+def exporter(tmpdir, coordinator, cov_prefix):
     config = "exports.yaml"
     p = tmpdir.join(config)
     p.write(
@@ -228,7 +243,7 @@ def exporter(tmpdir, coordinator):
     )
 
     exporter = Exporter(config, tmpdir)
-    exporter.start()
+    exporter.start(prefix=cov_prefix)
 
     yield exporter
 
