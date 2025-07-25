@@ -1708,8 +1708,46 @@ class ExportFormat(enum.Enum):
         return self.value
 
 
-def get_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser()
+class ManpageArgumentParser(argparse.ArgumentParser):
+    def __init__(self, *args, **kwargs):
+        # print help texts in fixed width
+        os.environ["COLUMNS"] = "180"
+
+        # hide --help, -h
+        kwargs.setdefault("add_help", False)
+        super().__init__(*args, **kwargs)
+
+    def add_subparsers(self, **kwargs):
+        subparsers = super().add_subparsers(**kwargs)
+        original_add_parser = subparsers.add_parser
+
+        def man_add_parser(name, **kwargs):
+            # hide --help, -h
+            kwargs.setdefault("add_help", False)
+
+            # aliases are not supported by autoprogram, they lead to duplicate entries
+            # instead, show them as command subcommand|alias --option
+            aliases = kwargs.pop("aliases", [])
+            if aliases:
+                name = "|".join([name] + list(aliases))
+
+            # the "help" text is ignore by autoprogram. Move to "description" instead.
+            if "description" not in kwargs and "help" in kwargs:
+                kwargs["description"] = kwargs.pop("help")
+
+            return original_add_parser(name, **kwargs)
+
+        subparsers.add_parser = man_add_parser
+        return subparsers
+
+
+def get_parser(for_manpage=True) -> argparse.ArgumentParser:
+    # if the parser is requested for manpage generation, some workarounds are needed
+    if for_manpage:
+        parser = ManpageArgumentParser()
+    else:
+        parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "-x",
         "--coordinator",
@@ -1747,11 +1785,13 @@ def get_parser() -> argparse.ArgumentParser:
         metavar="COMMAND",
     )
 
-    subparser = subparsers.add_parser("help")
+    # if the argparse object is to be used for manpage generation, hide some subcommands
+    if not for_manpage:
+        subparser = subparsers.add_parser("help")
 
-    subparser = subparsers.add_parser("complete")
-    subparser.add_argument("type", choices=["resources", "places", "matches", "match-names"])
-    subparser.set_defaults(func=ClientSession.complete)
+        subparser = subparsers.add_parser("complete")
+        subparser.add_argument("type", choices=["resources", "places", "matches", "match-names"])
+        subparser.set_defaults(func=ClientSession.complete)
 
     subparser = subparsers.add_parser("monitor", help="monitor events from the coordinator")
     subparser.set_defaults(func=ClientSession.do_monitor)
@@ -2000,7 +2040,7 @@ def get_parser() -> argparse.ArgumentParser:
         "-p",
         "--partition",
         type=int,
-        choices=range(0, 256),
+        choices=(None if for_manpage else range(0, 256)),
         metavar="0-255",
         default=1,
         help="partition number to mount or 0 to mount whole disk (default: %(default)s)",
@@ -2094,7 +2134,7 @@ def main():
     initial_state = os.environ.get("LG_INITIAL_STATE", None)
     token = os.environ.get("LG_TOKEN", None)
 
-    parser = get_parser()
+    parser = get_parser(for_manpage=False)
 
     # make any leftover arguments available for some commands
     args, leftover = parser.parse_known_args()
