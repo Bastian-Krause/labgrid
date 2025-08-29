@@ -59,6 +59,7 @@ jobs:
         ruff format --check --diff
     - name: Test with pytest
       run: |
+        export PYTHONWARNINGS=default
         pytest -r a --cov-config .coveragerc --cov=labgrid --junitxml=junit.xml -o junit_family=legacy --local-sshmanager --ssh-username runner -k "not test_docker_with_daemon"
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
@@ -73,6 +74,7 @@ jobs:
         flags: ${{ inputs.python-version }}
     - name: Build documentation
       run: |
+        export PYTHONWARNINGS=default
         make -C doc clean
         make -C doc doctest SPHINXOPTS=-W
         make -C doc html SPHINXOPTS=-W
