@@ -1708,41 +1708,52 @@ class ExportFormat(enum.Enum):
         return self.value
 
 
-class ManpageArgumentParser(argparse.ArgumentParser):
+class AutoProgramArgumentParser(argparse.ArgumentParser):
+    """Works around sphinxcontrib.autoprogram shortcomings."""
+
+    class _ActionWrapper:
+        """
+        Wraps argparse's special private action object registered for "parsers", see:
+        https://docs.python.org/3.14/library/argparse.html#argparse.ArgumentParser.add_subparsers
+        https://docs.python.org/3.13/library/argparse.html#argparse.ArgumentParser.register
+        """
+
+        def __init__(self, action):
+            self.action = action
+
+        def add_parser(self, name, **kwargs):
+            # aliases are not supported by autoprogram, they lead to duplicate entries, so
+            # show them as "command subcommand|alias --option" instead
+            aliases = kwargs.pop("aliases", [])
+            if aliases:
+                name = "|".join([name] + list(aliases))
+
+            # "help" text is ignored by autoprogram, move to "description" instead
+            if "description" not in kwargs and "help" in kwargs:
+                kwargs["description"] = kwargs.pop("help")
+
+            # add_parser() is the only part of the action object that's not an implementation detail
+            return self.action.add_parser(name, **kwargs)
+
     def __init__(self, *args, **kwargs):
         # print help texts in fixed width
         os.environ["COLUMNS"] = "180"
 
         # hide --help, -h
         kwargs.setdefault("add_help", False)
+
         super().__init__(*args, **kwargs)
 
     def add_subparsers(self, **kwargs):
-        subparsers = super().add_subparsers(**kwargs)
-        original_add_parser = subparsers.add_parser
+        action = super().add_subparsers(**kwargs)
+        return self._ActionWrapper(action)
 
-        def man_add_parser(name, **kwargs):
-            # hide --help, -h
-            kwargs.setdefault("add_help", False)
 
-            # aliases are not supported by autoprogram, they lead to duplicate entries
-            # instead, show them as command subcommand|alias --option
-            aliases = kwargs.pop("aliases", [])
-            if aliases:
-                name = "|".join([name] + list(aliases))
 
-            # the "help" text is ignore by autoprogram. Move to "description" instead.
-            if "description" not in kwargs and "help" in kwargs:
-                kwargs["description"] = kwargs.pop("help")
-
-            return original_add_parser(name, **kwargs)
-
-        subparsers.add_parser = man_add_parser
-        return subparsers
 
 def get_parser(auto_doc_mode=False) -> "argparse.ArgumentParser | AutoProgramArgumentParser":
     # use custom parser for sphinxcontrib.autoprogram
-    parser = ManpageArgumentParser() if auto_doc_mode else argparse.ArgumentParser()
+    parser = AutoProgramArgumentParser() if auto_doc_mode else argparse.ArgumentParser()
 
     parser.add_argument(
         "-x",
