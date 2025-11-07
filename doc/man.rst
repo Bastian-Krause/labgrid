@@ -8,5 +8,4 @@ Manual Pages
    man/coordinator
    man/device-config
    man/exporter
-   man/pytest
    man/suggest
