@@ -1748,7 +1748,12 @@ class AutoProgramArgumentParser(argparse.ArgumentParser):
         action = super().add_subparsers(**kwargs)
         return self._ActionWrapper(action)
 
+    def add_argument(self, *args, **kwargs):
+        # do not show ranges
+        if isinstance(kwargs.get("choices"), range):
+            del kwargs["choices"]
 
+        return super().add_argument(*args, **kwargs)
 
 
 def get_parser(auto_doc_mode=False) -> "argparse.ArgumentParser | AutoProgramArgumentParser":
@@ -2053,7 +2058,7 @@ def get_parser(auto_doc_mode=False) -> "argparse.ArgumentParser | AutoProgramArg
         "-p",
         "--partition",
         type=int,
-        choices=(None if auto_doc_mode else range(0, 256)),
+        choices=range(0, 256),
         metavar="0-255",
         default=1,
         help="partition number to mount or 0 to mount whole disk (default: %(default)s)",
