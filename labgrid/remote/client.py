@@ -1740,13 +1740,9 @@ class ManpageArgumentParser(argparse.ArgumentParser):
         subparsers.add_parser = man_add_parser
         return subparsers
 
-
-def get_parser(for_manpage=True) -> argparse.ArgumentParser:
-    # if the parser is requested for manpage generation, some workarounds are needed
-    if for_manpage:
-        parser = ManpageArgumentParser()
-    else:
-        parser = argparse.ArgumentParser()
+def get_parser(auto_doc_mode=False) -> "argparse.ArgumentParser | AutoProgramArgumentParser":
+    # use custom parser for sphinxcontrib.autoprogram
+    parser = ManpageArgumentParser() if auto_doc_mode else argparse.ArgumentParser()
 
     parser.add_argument(
         "-x",
@@ -1786,7 +1782,7 @@ def get_parser(for_manpage=True) -> argparse.ArgumentParser:
     )
 
     # if the argparse object is to be used for manpage generation, hide some subcommands
-    if not for_manpage:
+    if not auto_doc_mode:
         subparser = subparsers.add_parser("help")
 
         subparser = subparsers.add_parser("complete")
@@ -2046,7 +2042,7 @@ def get_parser(for_manpage=True) -> argparse.ArgumentParser:
         "-p",
         "--partition",
         type=int,
-        choices=(None if for_manpage else range(0, 256)),
+        choices=(None if auto_doc_mode else range(0, 256)),
         metavar="0-255",
         default=1,
         help="partition number to mount or 0 to mount whole disk (default: %(default)s)",
@@ -2140,7 +2136,7 @@ def main():
     initial_state = os.environ.get("LG_INITIAL_STATE", None)
     token = os.environ.get("LG_TOKEN", None)
 
-    parser = get_parser(for_manpage=False)
+    parser = get_parser()
 
     # make any leftover arguments available for some commands
     args, leftover = parser.parse_known_args()
