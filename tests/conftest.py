@@ -27,6 +27,14 @@ def clean_env(monkeypatch):
     monkeypatch.delenv("LG_SSH_CONNECT_TIMEOUT", raising=False)
     monkeypatch.delenv("LG_AGENT_PREFIX", raising=False)
 
+@pytest.fixture(autouse=True)
+def pass_filterwarnings(monkeypatch, pytestconfig):
+    # Pass filterwarnings as PYTHONWARNINGS= for pexpect.
+    # Note: PYTHONWARNINGS has some limitations compared to pytest's filterwarnings, see
+    # https://docs.python.org/3/library/warnings.html#the-warnings-filter
+    filterwarnings = pytestconfig.getini("filterwarnings")
+    monkeypatch.setenv("PYTHONWARNINGS", ",".join(filterwarnings))
+
 @pytest.fixture(scope="session")
 def curses_init():
     """ curses only reads the terminfo DB once on the first import, so make
