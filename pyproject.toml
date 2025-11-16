@@ -133,6 +133,27 @@ testpaths = [
     "labgrid",
 ]
 addopts = "-p no:labgrid"
+# Passed to PYTHONWARNINGS via the pass_filterwarnings fixture.
+# Note the differences between filters and PYTHONWARNINGS:
+# https://docs.python.org/3/library/warnings.html#the-warnings-filter
+filterwarnings = [
+    # turn warnings into exceptions
+    "error",
+    # ignore missing ser2net in exporter during tests
+    "ignore:ser2net binary not found:UserWarning:__main__",
+    # ignore other package's ResourceWarnings
+    "ignore::ResourceWarning",
+    # turn ResourceWarnings in labgrid into errors
+    "error::ResourceWarning:labgrid",
+    "error::ResourceWarning:__main__",
+    # ignore PytestAssertRewriteWarning during doctest
+    "ignore:Module already imported so cannot be rewritten; labgrid::_pytest.config",
+
+    # TODO: remove once https://github.com/ionelmc/pytest-benchmark/issues/283 is resolved
+    "ignore:FileType is deprecated:PendingDeprecationWarning:pytest_benchmark.plugin",
+    # TODO: remove once https://github.com/labgrid-project/labgrid/pull/1497 is merged
+    "ignore:The asyncore module is deprecated:DeprecationWarning:pysnmp.carrier.asyncore.base",
+]
 
 [tool.pylint.imports]
 ignored-modules = ["gi"]
