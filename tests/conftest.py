@@ -256,6 +256,29 @@ def exporter(tmpdir, coordinator):
 
     exporter.stop()
 
+@pytest.fixture(autouse=True)
+def check_spawn_expect_for_resource_warning(mocker):
+    """Wraps pexpect.spawn's expect() and checks for ResourceWarning."""
+    original_spawn = pexpect.spawn
+
+    def spawn(*args, **kwargs):
+        # create spawn object
+        spawn = original_spawn(*args, **kwargs)
+        original_expect = spawn.expect
+
+        # wrap pexpect spawn's expect()
+        def expect(*e_args, **e_kwargs):
+            result = original_expect(*e_args, **e_kwargs)
+            if b"ResourceWarning" in spawn.before:
+                raise ResourceWarning(f"{' '.join(spawn.args)} lead to {repr(spawn.before)}")
+            return result
+
+        mocker.patch.object(spawn, "expect", side_effect=expect)
+        return spawn
+
+    # Patch pexpect.spawn to return wrapped instances
+    mocker.patch("pexpect.spawn", side_effect=spawn)
+
 def pytest_addoption(parser):
     parser.addoption("--sigrok-usb", action="store_true",
                      help="Run sigrok usb tests with fx2lafw device (0925:3881)")
