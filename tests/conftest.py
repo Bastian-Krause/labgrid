@@ -6,11 +6,7 @@ import threading
 
 import pytest
 import pexpect
-
-from labgrid import Target
-from labgrid.driver import SerialDriver
-from labgrid.resource import RawSerialPort, NetworkSerialPort
-from labgrid.driver.fake import FakeConsoleDriver
+import labgrid
 
 psutil = pytest.importorskip("psutil")
 
@@ -188,38 +184,38 @@ class Coordinator(LabgridComponent):
 
 @pytest.fixture(scope='function')
 def target():
-    return Target('Test')
+    return labgrid.Target('Test')
 
 @pytest.fixture(scope='function')
 def target_with_fakeconsole():
-    t = Target('dummy')
-    cp = FakeConsoleDriver(t, "console")
+    t = labgrid.Target('dummy')
+    cp = labgrid.driver.fake.FakeConsoleDriver(t, "console")
     return t
 
 @pytest.fixture(scope='function')
 def serial_port(target):
-    return RawSerialPort(target, 'serial', '/dev/test')
+    return labgrid.resource.RawSerialPort(target, 'serial', '/dev/test')
 
 @pytest.fixture(scope='function')
 def serial_rfc2711_port(target):
-    return NetworkSerialPort(target, 'rfc2711', host='localhost', port=8888)
+    return labgrid.resource.NetworkSerialPort(target, 'rfc2711', host='localhost', port=8888)
 
 @pytest.fixture(scope='function')
 def serial_raw_port(target):
-    return NetworkSerialPort(target, 'serialraw', host='localhost', port=8888, protocol="raw")
+    return labgrid.resource.NetworkSerialPort(target, 'serialraw', host='localhost', port=8888, protocol="raw")
 
 
 @pytest.fixture(scope='function')
 def serial_driver(target, serial_port, mocker):
     m = mocker.patch('serial.Serial')
-    s = SerialDriver(target, 'serial')
+    s = labgrid.driver.SerialDriver(target, 'serial')
     target.activate(s)
     return s
 
 @pytest.fixture(scope='function')
 def serial_driver_no_name(target, serial_port, mocker):
     m = mocker.patch('serial.Serial')
-    s = SerialDriver(target, None)
+    s = labgrid.driver.SerialDriver(target, None)
     target.activate(s)
     return s
 
