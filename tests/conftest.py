@@ -1,4 +1,5 @@
 import logging
+import pkgutil
 from signal import SIGTERM
 import sys
 import threading
@@ -33,7 +34,12 @@ def pass_filterwarnings(monkeypatch, pytestconfig):
     # Note: PYTHONWARNINGS has some limitations compared to pytest's filterwarnings, see
     # https://docs.python.org/3/library/warnings.html#the-warnings-filter
     filterwarnings = pytestconfig.getini("filterwarnings")
-    monkeypatch.setenv("PYTHONWARNINGS", ",".join(filterwarnings))
+
+    # turn ResourceWarnings into errors for labgrid's modules
+    lg_modules = pkgutil.walk_packages(labgrid.__path__, f"{labgrid.__name__}.")
+    err_res_warnings = [f"error::ResourceWarning:{mod.name}" for mod in lg_modules]
+
+    monkeypatch.setenv("PYTHONWARNINGS", ",".join(filterwarnings + err_res_warnings))
 
 @pytest.fixture(scope="session")
 def curses_init():
