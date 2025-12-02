@@ -75,14 +75,13 @@ class RawNetworkInterfaceDriver(Driver):
 
     def _get_state(self):
         """Returns the bound interface's operstate."""
-        if_state = self.iface.extra.get("state")
-        if if_state:
-            return if_state
-
-        cmd = self.iface.command_prefix + ["cat", f"/sys/class/net/{self.iface.ifname}/operstate"]
-        output = processwrapper.check_output(cmd).decode("ascii")
-        if_state = output.strip()
-        return if_state
+        if isinstance(self.iface, RemoteNetworkInterface)
+            return self.iface.extra.get("state")
+        elif isinstance(self.iface, USBNetworkInterface)
+            return self.iface.if_state
+        else:
+            cmd = self.iface.command_prefix + ["cat", f"/sys/class/net/{self.iface.ifname}/operstate"]
+            return processwrapper.check_output(cmd).decode("ascii").strip()
 
     @Driver.check_active
     def get_state(self):
