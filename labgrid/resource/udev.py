@@ -373,7 +373,8 @@ class DFUDevice(USBResource):
 
 @target_factory.reg_resource
 @attr.s(eq=False)
-class USBNetworkInterface(USBResource, NetworkInterface):
+class USBNetworkInterface(USBResource):
+    ifname = attr.ib(default=None)
     def __attrs_post_init__(self):
         self.match['SUBSYSTEM'] = 'net'
         self.match['@SUBSYSTEM'] = 'usb'
