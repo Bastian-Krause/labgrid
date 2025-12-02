@@ -322,16 +322,13 @@ class NetworkInterfaceExport(ResourceExport):
 
     def _get_params(self):
         """Helper function to return parameters"""
-        params = {
+        return {
             "host": self.host,
             "ifname": self.local.ifname,
-        }
-        if self.cls == "USBNetworkInterface":
-            params["extra"] = {
+            "extra": {
                 "state": self.local.if_state,
             }
-
-        return params
+        }
 
 
 exports["USBNetworkInterface"] = NetworkInterfaceExport
