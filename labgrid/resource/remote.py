@@ -60,8 +60,14 @@ class RemotePlaceManager(ResourceManager):
 
         # handle remote env
         remote_env = place.get_remote_env()
-        target_factory.make_resources_from_config(remote_place.target, remote_env.get("resources", {}))
-        target_factory.make_drivers_from_config(remote_place.target, remote_env.get("drivers", {}))
+        resources = target_factory._convert_to_named_list(remote_env.get("resources", {}))
+        resources = [item for item in resources
+                     if item["cls"] != "RemotePlace"
+                     and item["cls"] not in remote_place.ignore_resources]
+        drivers = target_factory._convert_to_named_list(remote_env.get("drivers", {}))
+        drivers = [item for item in drivers if item["cls"] not in remote_place.ignore_drivers]
+        target_factory.make_resources_from_config(remote_place.target, resources)
+        target_factory.make_drivers_from_config(remote_place.target, drivers)
 
         remote_place.avail = True
         remote_place.tags = copy.deepcopy(place.tags)
@@ -97,6 +103,15 @@ class RemotePlaceManager(ResourceManager):
 @attr.s(eq=False)
 class RemotePlace(ManagedResource):
     manager_cls = RemotePlaceManager
+
+    ignore_resources = attr.ib(
+        default=attr.Factory(list),
+        validator=attr.validators.instance_of(list)
+    )
+    ignore_drivers = attr.ib(
+        default=attr.Factory(list),
+        validator=attr.validators.instance_of(list)
+    )
 
     def __attrs_post_init__(self):
         self.timeout = 10.0
