@@ -53,6 +53,8 @@ jobs:
         python -m pip install --upgrade pip virtualenv
     - name: Install labgrid
       run: |
+        sudo apt-get install -yq libxml2-dev libxslt1-dev libffi-dev
+        pipx install uv
         pip install -e ".[dev]"
     - name: Lint with pylint
       run: |
