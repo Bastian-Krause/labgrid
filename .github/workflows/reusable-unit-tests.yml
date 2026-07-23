@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-24.04
     continue-on-error: false
     steps:
+    - name: Free Runner Space
+      uses: justinthelaw/maximize-github-runner-space@v0.10.0
+      with:
+        skip-components: cached-python,cached-pypy,android
     - uses: actions/checkout@v4
       with:
         ref: ${{ inputs.branch }}
@@ -25,6 +29,7 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ inputs.python-version }}
+        allow-prereleases: true
     - uses: actions/cache@v4
       with:
         path: ~/.cache/pip
@@ -52,7 +57,13 @@ jobs:
         python -m pip install --upgrade pip virtualenv
     - name: Install labgrid
       run: |
-        pip install -e ".[dev]"
+        sudo apt-get install -yq libxml2-dev libxslt1-dev libffi-dev
+        pipx install uv
+        pipx install "git+https://github.com/Bastian-Krause/git-wheels-index.git"
+        echo "== compile: =="
+        echo ".[dev]" | with-git-wheels-index --python "${{ inputs.python-version }}" --config .github/gwi.toml -- uv pip compile -
+        echo "== install: =="
+        with-git-wheels-index --python "${{ inputs.python-version }}" --config .github/gwi.toml -- pip install -e ".[dev]"
     - name: Lint with pylint
       run: |
         pylint --list-msgs-enabled

@@ -1,0 +1,127 @@
+[repo_overrides]
+# Packages whose source repo the metadata heuristic can't (correctly) find.
+# (grpcio-reflection / grpcio-channelz are handled by [sources.*] prebuild
+# entries below, which carry their own repo, so they need no override here.)
+pyserial-labgrid  = "https://github.com/labgrid-project/pyserial"
+pluggy            = "https://github.com/pytest-dev/pluggy"
+paho-mqtt         = "https://github.com/eclipse-paho/paho.mqtt.python"
+python-vxi11      = "https://github.com/python-ivi/python-vxi11"
+decorator         = "https://github.com/micheles/decorator"
+sphinxcontrib-jsmath = "https://github.com/sphinx-doc/sphinxcontrib-jsmath"
+# roman-numerals' package lives in the python/ subdirectory of its repo.
+roman-numerals = "https://github.com/AA-Turner/roman-numerals#subdirectory=python"
+roman-numerals-py = "https://github.com/AA-Turner/roman-numerals#subdirectory=python"
+# docutils' package lives in a subdirectory of its repo.
+docutils          = "https://github.com/docutils/docutils#subdirectory=docutils"
+# pytz's source lives on Launchpad, under a subdirectory.
+pytz              = "https://git.launchpad.net/pytz#subdirectory=src"
+ply               = "https://github.com/dabeaz/ply"
+
+# ---------------------------------------------------------------------------
+# System *build* dependencies as per-package hooks. A `git` source's `commands`
+# run in the checkout before the tool builds the wheel, so the apt install
+# happens only when that package is actually (re)built — nothing in the CI
+# workflow's apt step. `DPkg::Lock::Timeout` lets these wait for the apt lock
+# instead of failing when several packages build concurrently.
+#
+# Only headers whose *runtime* library is already present on the runner belong
+# here (libxml2 / libffi are; a cached wheel that skips its build-time apt still
+# imports). libow is NOT present by default, so onewire's libow-dev stays in the
+# workflow, installed unconditionally — see integration.yml.
+# ---------------------------------------------------------------------------
+[sources.lxml]
+type = "git"
+commands = ["sudo apt-get -o DPkg::Lock::Timeout=300 update && sudo apt-get -o DPkg::Lock::Timeout=300 install -y libxml2-dev libxslt1-dev"]
+
+[sources.cffi]
+type = "git"
+commands = ["sudo apt-get -o DPkg::Lock::Timeout=300 update && sudo apt-get -o DPkg::Lock::Timeout=300 install -y libffi-dev"]
+
+[sources.protobuf]
+# protobuf's Python package is built from the monorepo with bazel, which emits
+# the wheel itself — so `commands` own the build and `wheel` globs for the
+# result (relative to the checkout root, where bazel must run; no subdirectory).
+# NOTE: the exact bazel output path can shift by version — confirm/iterate in CI.
+type = "prebuild"
+repo = "https://github.com/protocolbuffers/protobuf"
+commands = ["bazel build //python/dist:binary_wheel"]
+wheel = "bazel-bin/python/dist/*.whl"
+
+[sources.snowballstemmer]
+# snowballstemmer's Python stemmers are GENERATED from the snowball C compiler.
+# `make dist_libstemmer_python` builds the compiler, generates the per-language
+# stemmers, and assembles dist/snowballstemmer-<ver>/ (its final `python -m build`
+# sub-step fails for lack of the `build` module — harmless, hence `|| true`); we
+# then build the wheel from the assembled source tree ourselves.
+type = "prebuild"
+repo = "https://github.com/snowballstem/snowball"
+commands = [
+    "make dist_libstemmer_python || true",
+    "uv build --wheel dist/snowballstemmer-*/ -o dist_wheel",
+]
+wheel = "dist_wheel/*.whl"
+
+[sources.pytest-dependency]
+# pytest-dependency's setup.py derives its version from the `gitprops` module,
+# an UNDECLARED, non-PyPI build dep — except it IS on PyPI as `git-props`
+# (providing the `gitprops` module). We build in a throwaway venv (.benv) with
+# git-props installed, using --no-build-isolation so the build sees it. The
+# commands run in the checkout, where `.git` is present (git-props reads it).
+type = "prebuild"
+repo = "https://github.com/RKrahl/pytest-dependency"
+commands = [
+    "uv venv .benv",
+    "uv pip install --python .benv/bin/python setuptools wheel git-props",
+    "VIRTUAL_ENV=$PWD/.benv uv build --wheel . --no-build-isolation -o dist",
+]
+wheel = "dist/*.whl"
+
+[sources.aiohttp]
+# aiohttp can't be built straight from git: it needs the vendored llhttp parser
+# generated (Node toolchain) and its Cython `.c` sources generated first. Steps:
+#   1. `make generate-llhttp` — `npm ci` + generate (needs Node, present on CI);
+#   2. cythonize with cython+multidict from a throwaway .cyenv put on PATH, so
+#      the build tools never touch the productive env;
+#   3. a normal isolated wheel build then compiles the generated `.c` into `.so`.
+type = "prebuild"
+repo = "https://github.com/aio-libs/aiohttp"
+commands = [
+    "make generate-llhttp",
+    "uv venv .cyenv",
+    "uv pip install --python .cyenv/bin/python cython multidict",
+    "PATH=\"$PWD/.cyenv/bin:$PATH\" make cythonize-nodeps",
+    "uv build --wheel . -o dist",
+]
+wheel = "dist/*.whl"
+
+# ---------------------------------------------------------------------------
+# grpcio-reflection / grpcio-channelz — full custom build (heavy)
+# ---------------------------------------------------------------------------
+# Pure-Python packages whose proto stubs are GENERATED at build time by
+# grpcio-tools, whose setup.py pins the UNRELEASED `grpcio-tools==<X>.dev0` — only
+# in this same monorepo. Each recipe builds grpcio-tools from source first (a full
+# protoc/C++ compile, the heavy part) into a throwaway .benv, then runs grpc's own
+# codegen and builds the package wheel with --no-build-isolation against .benv.
+# Both sources resolve to the same repo, so the index keys their checkout by repo
+# URL and they SHARE one grpc clone; the heavy setup is guarded by a sentinel so it
+# runs ONCE for whichever package is built first.
+
+[sources.grpcio-reflection]
+type = "prebuild"
+repo = "https://github.com/grpc/grpc"
+commands = [
+    "test -f .gwi-grpc-tools-done || { python tools/distrib/python/make_grpcio_tools.py && uv venv .benv && uv pip install --python .benv/bin/python setuptools wheel && GRPC_PYTHON_BUILD_WITH_CYTHON=1 uv pip install --python .benv/bin/python --no-deps ./tools/distrib/python/grpcio_tools && touch .gwi-grpc-tools-done; }",
+    ".benv/bin/python src/python/grpcio_reflection/setup.py preprocess build_package_protos",
+    "R=\"$PWD\"; cd src/python/grpcio_reflection && VIRTUAL_ENV=\"$R/.benv\" uv build --wheel . --no-build-isolation -o dist",
+]
+wheel = "src/python/grpcio_reflection/dist/*.whl"
+
+[sources.grpcio-channelz]
+type = "prebuild"
+repo = "https://github.com/grpc/grpc"
+commands = [
+    "test -f .gwi-grpc-tools-done || { python tools/distrib/python/make_grpcio_tools.py && uv venv .benv && uv pip install --python .benv/bin/python setuptools wheel && GRPC_PYTHON_BUILD_WITH_CYTHON=1 uv pip install --python .benv/bin/python --no-deps ./tools/distrib/python/grpcio_tools && touch .gwi-grpc-tools-done; }",
+    ".benv/bin/python src/python/grpcio_channelz/setup.py preprocess build_package_protos",
+    "R=\"$PWD\"; cd src/python/grpcio_channelz && VIRTUAL_ENV=\"$R/.benv\" uv build --wheel . --no-build-isolation -o dist",
+]
+wheel = "src/python/grpcio_channelz/dist/*.whl"
