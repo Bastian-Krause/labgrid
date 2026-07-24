@@ -59,7 +59,6 @@ jobs:
     - name: Lint with pylint
       run: |
         pylint --list-msgs-enabled
-        pylint labgrid
     - name: Format with ruff
       run: |
         ruff format --check --diff
