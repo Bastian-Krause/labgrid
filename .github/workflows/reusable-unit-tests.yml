@@ -15,7 +15,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-26.04
     continue-on-error: false
     steps:
     - name: Free Runner Space
@@ -57,7 +57,7 @@ jobs:
         python -m pip install --upgrade pip virtualenv
     - name: Install labgrid
       run: |
-        sudo apt-get install -yq libxml2-dev libxslt1-dev libffi-dev
+        sudo apt-get install -yq libxml2-dev libxslt1-dev libffi-dev python3-dev
         pipx install uv
         pipx install "git+https://github.com/Bastian-Krause/git-wheels-index.git"
         echo "== compile: =="
