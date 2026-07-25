@@ -16,6 +16,7 @@ docutils          = "https://github.com/docutils/docutils#subdirectory=docutils"
 # pytz's source lives on Launchpad, under a subdirectory.
 pytz              = "https://git.launchpad.net/pytz#subdirectory=src"
 ply               = "https://github.com/dabeaz/ply"
+simplegeneric     = "https://github.com/mindw/simplegeneric"
 
 # ---------------------------------------------------------------------------
 # System *build* dependencies as per-package hooks. A `git` source's `commands`
