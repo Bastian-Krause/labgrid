@@ -113,6 +113,7 @@ jobs:
         pylint labgrid
     - name: Format with ruff
       run: |
+        cat $(which ruff)
         ruff format --check --diff
     - name: Test with pytest
       run: |
