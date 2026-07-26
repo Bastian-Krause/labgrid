@@ -21,6 +21,8 @@ jobs:
     - name: Free Runner Space
       uses: justinthelaw/maximize-github-runner-space@v0.10.0
       with:
+        # keep `rust`: packages built from git with maturin (ruff, …) need a
+        # toolchain, and letting maturin bootstrap its own is slow and fragile
         skip-components: cached-python,cached-pypy,android,rust
     - uses: actions/checkout@v4
       with:
@@ -36,13 +38,32 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-pip-
-    - name: Restore git-wheels-index built wheels
-      id: gwi-cache
+
+    # git-wheels-index caches, restored/saved as a pair.
+    #
+    # Split restore/save (instead of plain actions/cache) on purpose: that action
+    # only saves on job success (`post-if: success()`), and these runs are expected
+    # to fail while the dependency dev branches are being shaken out — which is
+    # exactly when we most want to keep the wheels already built.
+    #
+    #   wheels/    the tool's own cache, keyed by <project>/<commit-sha>/<wheel-tag>
+    #              — a cached wheel is served with no probe, no build, no clone
+    #   pip-cache/ where every build's pip/uv cache is redirected (--cache-dir);
+    #              pip caches wheels built from immutable git SHAs here
+    #
+    # A partial set from a failed run is still valid, because entries are keyed by
+    # commit: unchanged upstream HEAD == reuse, moved HEAD == rebuild.
+    - name: Restore git-wheels-index caches
       uses: actions/cache/restore@v4
       with:
-        path: .git-wheels-index/wheels
-        key: gwi-wheels-${{ inputs.python-version }}-${{ github.run_id }}
+        path: |
+          .git-wheels-index/wheels
+          .git-wheels-index/pip-cache
+        # run_attempt too: re-running a failed job keeps the same run_id, and cache
+        # keys are immutable — without it the re-run's wheels would be discarded
+        key: gwi-wheels-${{ inputs.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
         restore-keys: gwi-wheels-${{ inputs.python-version }}-
+
     - name: Install system dependencies
       run: |
         sudo apt-get install -yq libow-dev openssh-server openssh-client graphviz openocd
@@ -71,12 +92,21 @@ jobs:
         echo ".[dev]" | with-git-wheels-index --python "${{ inputs.python-version }}" --config .github/gwi.toml -- uv pip compile -
         echo "== install: =="
         with-git-wheels-index --python "${{ inputs.python-version }}" --config .github/gwi.toml -- pip install -e ".[dev]"
-    - name: Save git-wheels-index built wheels
-      if: always()          # the point: keep what we built even when the run failed
+
+    # Immediately after the only step that builds wheels. `!cancelled()` rather than
+    # `always()` so a cancelled run doesn't upload a half-written cache;
+    # continue-on-error so an early failure (nothing built, paths absent) can't turn
+    # this into a second, confusing error.
+    - name: Save git-wheels-index caches
+      if: ${{ !cancelled() }}
+      continue-on-error: true
       uses: actions/cache/save@v4
       with:
-        path: .git-wheels-index/wheels
-        key: gwi-wheels-${{ inputs.python-version }}-${{ github.run_id }}
+        path: |
+          .git-wheels-index/wheels
+          .git-wheels-index/pip-cache
+        key: gwi-wheels-${{ inputs.python-version }}-${{ github.run_id }}-${{ github.run_attempt }}
+
     - name: Lint with pylint
       run: |
         pylint --list-msgs-enabled
