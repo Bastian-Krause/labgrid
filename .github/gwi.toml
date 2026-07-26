@@ -126,3 +126,6 @@ commands = [
     "R=\"$PWD\"; cd src/python/grpcio_channelz && VIRTUAL_ENV=\"$R/.benv\" uv build --wheel . --no-build-isolation -o dist",
 ]
 wheel = "src/python/grpcio_channelz/dist/*.whl"
+
+[sources.psutil]
+type = "pypi"
