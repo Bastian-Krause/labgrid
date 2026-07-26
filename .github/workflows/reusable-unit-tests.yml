@@ -36,6 +36,15 @@ jobs:
         key: ${{ runner.os }}-pip-${{ hashFiles('pyproject.toml') }}
         restore-keys: |
           ${{ runner.os }}-pip-
+    - name: Cache git-wheels-index built wheels
+      uses: actions/cache@v4
+      with:
+        path: .git-wheels-index/wheels
+        # keyed by commit SHA + interpreter tag inside, so an unchanged
+        # default branch = instant reuse; rolling key so the post-job save
+        # always stores the newly-built set
+        key: gwi-wheels-${{ inputs.python-version }}-${{ github.run_id }}
+        restore-keys: gwi-wheels-${{ inputs.python-version }}-
     - name: Install system dependencies
       run: |
         sudo apt-get install -yq libow-dev openssh-server openssh-client graphviz openocd
