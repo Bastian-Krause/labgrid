@@ -1,9 +1,12 @@
+import builtins
 import logging
 import os
+import re
 from signal import SIGTERM
 import sys
 import threading
 import time
+import warnings
 
 import pytest
 import pexpect
@@ -57,6 +60,52 @@ class Prefixer:
 
     def __getattr__(self, name):
         return getattr(self.__wrapped, name)
+
+
+class _WarningSniffer:
+    """pexpect logfile_read target: re-emit warnings printed by spawned labgrid processes
+    (PYTHONWARNINGS=default) so they show up in pytest's warnings summary. The line matcher is
+    derived from warnings.formatwarning, so the separators come from the stdlib rather than being
+    hand-written, and any category is accepted (not just *Warning)."""
+
+    _re = re.compile(("^" + warnings.formatwarning(
+        r"(?P<msg>.*)", type(r"(?P<cat>[\w.]+)", (Warning,), {}),
+        r"(?P<file>.+?)", r"(?P<line>\d+)", line="").rstrip("\n") + "$").encode())
+
+    def __init__(self):
+        self._buf = b""
+
+    def write(self, data):
+        self._buf += data
+        while b"\n" in self._buf:
+            line, self._buf = self._buf.split(b"\n", 1)
+            m = self._re.match(line.rstrip(b"\r"))
+            if m:
+                cat = getattr(builtins, m["cat"].decode(), UserWarning)
+                warnings.warn_explicit(m["msg"].decode(errors="replace"), cat,
+                                       m["file"].decode(errors="replace"), int(m["line"]))
+
+    def flush(self):
+        pass
+
+
+class _SniffingSpawn(pexpect.spawn):
+    """pexpect.spawn that also feeds child output through _WarningSniffer via logfile_read
+    (independent of the logfile= the daemons use, so both keep working)."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.logfile_read = _WarningSniffer()
+
+
+def lg_spawn(command, **kwargs):
+    """pexpect.spawn wrapper for the labgrid subprocesses the tests spawn: run the child with
+    PYTHONWARNINGS=default (DeprecationWarning is hidden by default outside __main__) and
+    re-emit the warnings it prints, so they show up in pytest's warnings summary. Use this
+    instead of pexpect.spawn() for labgrid processes; other pexpect.spawn() users are untouched."""
+    env = kwargs.pop("env", None)
+    env = os.environ.copy() if env is None else dict(env)
+    env.setdefault("PYTHONWARNINGS", "default")
+    return _SniffingSpawn(command, env=env, **kwargs)
 
 
 class _LockedSpawn:
@@ -172,7 +221,7 @@ class Exporter(LabgridComponent):
         assert self.spawn is None
         assert self.reader is None
 
-        self.spawn = pexpect.spawn(
+        self.spawn = lg_spawn(
             f'python -m labgrid.remote.exporter --name testhost {self.config}',
             logfile=Prefixer(sys.stdout.buffer, 'exporter'),
             cwd=self.cwd)
@@ -190,7 +239,7 @@ class Coordinator(LabgridComponent):
         assert self.spawn is None
         assert self.reader is None
 
-        self.spawn = pexpect.spawn(
+        self.spawn = lg_spawn(
             'python -m labgrid.remote.coordinator',
             logfile=Prefixer(sys.stdout.buffer, 'coordinator'),
             cwd=self.cwd)
