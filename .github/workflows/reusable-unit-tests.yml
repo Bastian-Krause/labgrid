@@ -21,7 +21,7 @@ jobs:
     - name: Free Runner Space
       uses: justinthelaw/maximize-github-runner-space@v0.10.0
       with:
-        skip-components: cached-python,cached-pypy,android
+        skip-components: cached-python,cached-pypy,android,rust
     - uses: actions/checkout@v4
       with:
         ref: ${{ inputs.branch }}
