@@ -150,6 +150,7 @@ enable = [
 
     # warning checks (sorted alphabetically)
     'arguments-differ',
+    'arguments-renamed',
     'deprecated-argument',
     'deprecated-class',
     'deprecated-decorator',
