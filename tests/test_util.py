@@ -19,7 +19,7 @@ from labgrid.util.managedfile import ManagedFile, ManagedFileError
 from labgrid.driver.exception import ExecutionError
 from labgrid.resource.serialport import NetworkSerialPort
 from labgrid.resource.common import Resource, NetworkResource
-from labgrid.util import diff_dict, flat_dict, filter_dict, find_dict
+from labgrid.util import diff_dict, flat_dict, filter_dict, find_dict, renamed_kwargs
 
 @pytest.fixture
 def connection_localhost():
@@ -402,3 +402,22 @@ def test_find_dict():
     assert find_dict(dict_a, "a.a") == {"a.a.a": "a.a.a_val"}
     assert find_dict(dict_a, "a.a.a") == "a.a.a_val"
     assert find_dict(dict_a, "x") == None
+
+def test_renamed_kwargs():
+    @renamed_kwargs(old="new")
+    def func(new=None):
+        return new
+
+    # the current name is passed through untouched
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        assert func("positional") == "positional"
+        assert func(new="current") == "current"
+
+    # the deprecated name still works, but warns
+    with pytest.warns(DeprecationWarning, match="'old' is deprecated, use 'new' instead"):
+        assert func(old="deprecated") == "deprecated"
+
+    # passing both is ambiguous
+    with pytest.raises(TypeError):
+        func(old="deprecated", new="current")
