@@ -1,3 +1,29 @@
+Release 27.0 (unreleased)
+-------------------------
+
+Breaking changes in 27.0
+~~~~~~~~~~~~~~~~~~~~~~~~
+- Several drivers named their parameters differently than the protocol they
+  implement, so callers could not pass them as keyword arguments by following
+  the protocol. The parameters were renamed to match:
+
+  - `CommandProtocol`: ``cmd`` is now ``command`` in ``run()``, ``run_check()``,
+    ``wait_for()`` and ``poll_until_success()``
+  - `FileTransferProtocol`: ``localfile``/``remotefile`` are now
+    ``filename``/``remotepath`` in ``ShellDriver.put()`` and
+    ``filename``/``destination`` in ``ShellDriver.get()``
+  - `DigitalOutputProtocol`: ``value`` is now ``status`` in
+    ``SerialPortDigitalOutputDriver.set()``
+  - `VideoProtocol`: ``caps_hint`` is now ``quality_hint`` in
+    ``USBVideoDriver.stream()``
+  - `GraphStrategy`: ``state`` is now ``status`` in ``transition()``
+
+  The old names still work but emit a DeprecationWarning. Positional callers
+  are unaffected.
+- ``CommandProtocol.wait_for()`` and ``CommandProtocol.poll_until_success()``
+  now declare the parameters they have always required. Both were declared
+  without any parameters, which no implementation could satisfy.
+
 Release 26.0 (Released Jun 06, 2026)
 ------------------------------------
 Sponsored by: Analog Devices GmbH
