@@ -3,10 +3,11 @@ import pexpect
 
 from ..util import PtxExpect, Timeout
 from ..step import step
+from ..protocol import ConsoleProtocol
 from .common import Driver
 
 
-class ConsoleExpectMixin:
+class ConsoleExpectMixin(ConsoleProtocol):
     """
     Console driver mixin to implement the read, write, expect and sendline methods. It uses
     the internal _read and _write methods.

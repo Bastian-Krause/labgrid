@@ -2,11 +2,12 @@ from time import sleep
 
 from ..util import Timeout, renamed_kwargs
 from ..step import step
+from ..protocol import CommandProtocol
 from .common import Driver
 from .exception import ExecutionError
 
 
-class CommandMixin:
+class CommandMixin(CommandProtocol):
     """
     CommandMixin implementing common functions for drivers which support the CommandProtocol
     """
