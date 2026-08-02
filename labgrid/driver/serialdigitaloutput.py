@@ -3,6 +3,7 @@ import attr
 from ..factory import target_factory
 from ..protocol import DigitalOutputProtocol
 from ..step import step
+from ..util import renamed_kwargs
 from .common import Driver
 from . import SerialDriver
 
@@ -52,12 +53,13 @@ class SerialPortDigitalOutputDriver(Driver, DigitalOutputProtocol):
 
         return val
 
+    @renamed_kwargs(value="status")
     @Driver.check_active
     @step()
-    def set(self, value):
+    def set(self, status):
         if self.invert:
-            value = not value
+            status = not status
         if self.signal == "dtr":
-            self._p.dtr = value
+            self._p.dtr = status
         elif self.signal == "rts":
-            self._p.rts = value
+            self._p.rts = status

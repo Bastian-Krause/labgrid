@@ -5,6 +5,7 @@ import attr
 from ..exceptions import InvalidConfigError
 from ..factory import target_factory
 from ..protocol import VideoProtocol
+from ..util import renamed_kwargs
 from .common import Driver
 
 
@@ -144,9 +145,10 @@ class USBVideoDriver(Driver, VideoProtocol):
         pipeline += "! matroskamux streamable=true ! fdsink"
         return pipeline
 
+    @renamed_kwargs(caps_hint="quality_hint")
     @Driver.check_active
-    def stream(self, caps_hint=None, controls=None):
-        caps = self.select_caps(caps_hint)
+    def stream(self, quality_hint=None, controls=None):
+        caps = self.select_caps(quality_hint)
         pipeline = self.get_pipeline(self.video.path, caps, controls)
 
         tx_cmd = self.video.command_prefix + ["gst-launch-1.0", "-q"]
