@@ -32,7 +32,7 @@ class BareboxStrategy(Strategy):
 
     @never_retry
     @step(args=['status'])
-    def transition(self, status, *, step):  # pylint: disable=redefined-outer-name
+    def transition(self, status, *, step):  # pylint: disable=redefined-outer-name,arguments-differ
         if not isinstance(status, Status):
             status = Status[status]
         if status == Status.unknown:
