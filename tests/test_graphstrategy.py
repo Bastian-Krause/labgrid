@@ -174,6 +174,13 @@ def test_transition(graph_strategy):
 
 
 @pytest.mark.dependency(depends=["api-works", "test_transition"])
+def test_transition_deprecated_state_kwarg(graph_strategy):
+    with pytest.warns(DeprecationWarning, match="'state' is deprecated, use 'status' instead"):
+        assert graph_strategy.transition(state="B") == ["Root", "A1", "B"]
+    assert graph_strategy.path == ["Root", "A1", "B"]
+
+
+@pytest.mark.dependency(depends=["api-works", "test_transition"])
 def test_transition_to_unknown_state(graph_strategy):
     from labgrid.strategy import GraphStrategyRuntimeError
 

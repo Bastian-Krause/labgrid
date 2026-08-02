@@ -3,6 +3,7 @@ import os
 
 from .common import Strategy, StrategyError
 from ..step import step
+from ..util import renamed_kwargs
 
 __all__ = [
     "InvalidGraphStrategyError",
@@ -103,8 +104,9 @@ class GraphStrategy(Strategy):
         # deactivate all drivers to restore initial state
         self.target.deactivate_all_drivers()
 
-    @step(args=["state"])
-    def transition(self, state, via=None):
+    @renamed_kwargs(state="status")
+    @step(args=["status"])
+    def transition(self, status, via=None):
         """
         Computes the path from root state (via "via" state, if given) to given state.
         If the computed path is fully incremental to the path executed previously, only the state's
@@ -113,10 +115,10 @@ class GraphStrategy(Strategy):
         """
         if not isinstance(via, (type(None), list)):
             raise GraphStrategyRuntimeError("'via' has to be a list or None")
-        # for use with labgrid-client -s, if only state is set, try to extract
-        # the via states
-        if ":" in state and via is None:
-            state, via = state.split(":")
+        # for use with labgrid-client -s, if only the state is set, try to
+        # extract the via states
+        if ":" in status and via is None:
+            status, via = status.split(":")
             via = via.split(",")
         via = via or []
         try:
@@ -128,13 +130,13 @@ class GraphStrategy(Strategy):
             self.__transition_running = True
 
             # check if state is known
-            if state not in self.states:
+            if status not in self.states:
                 raise GraphStrategyRuntimeError(
-                    f"Unknown state '{state}'. State names are: {', '.join(self.states.keys())}"
+                    f"Unknown state '{status}'. State names are: {', '.join(self.states.keys())}"
                 )
 
             # find path
-            abs_path = self.find_abs_path(state, via=via)
+            abs_path = self.find_abs_path(status, via=via)
 
             if abs_path == self.path:
                 return []
