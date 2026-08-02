@@ -43,6 +43,26 @@ class TestShellDriver:
         with pytest.raises(TypeError):
             d.run(cmd="test", command="test")
 
+    def test_put_get_deprecated_kwargs(self, target_with_fakeconsole, mocker):
+        t = target_with_fakeconsole
+        d = ShellDriver(t, "shell", prompt="dummy", login_prompt="dummy", username="dummy")
+        d.on_activate = mocker.MagicMock()
+        d = t.get_driver("ShellDriver")
+        d._put = mocker.MagicMock()
+        d._get = mocker.MagicMock()
+
+        with pytest.warns(DeprecationWarning, match="'localfile' is deprecated"):
+            d.put(localfile="local", remotefile="remote")
+        d._put.assert_called_once_with("local", "remote")
+
+        with pytest.warns(DeprecationWarning, match="'remotefile' is deprecated"):
+            d.get(remotefile="remote", localfile="local")
+        d._get.assert_called_once_with("remote", "local")
+
+        d._put.reset_mock()
+        d.put(filename="local", remotepath="remote")
+        d._put.assert_called_once_with("local", "remote")
+
     def test_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
         d = ShellDriver(t, "shell", prompt="dummy", login_prompt="dummy", username="dummy")

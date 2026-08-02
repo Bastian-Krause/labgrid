@@ -429,20 +429,21 @@ class ShellDriver(CommandMixin, Driver, CommandProtocol, FileTransferProtocol):
             buf = fh.read(None)
             self._put_bytes(buf, remotefile)
 
+    @renamed_kwargs(localfile="filename", remotefile="remotepath")
     @Driver.check_active
-    def put(self, localfile: str, remotefile: str):
+    def put(self, filename: str, remotepath: str):
         """ Upload a file to the target.
         Will silently overwrite the remote file if it already exists.
 
         Args:
-            localfile (str): source filename on the local machine
-            remotefile (str): destination filename on the target
+            filename (str): source filename on the local machine
+            remotepath (str): destination filename on the target
 
         Raises:
-            IOError: if the provided localfile could not be found
+            IOError: if the provided filename could not be found
             ExecutionError: if something else went wrong
         """
-        self._put(localfile, remotefile)
+        self._put(filename, remotepath)
 
     @step(title='get_bytes', args=['remotefile'])
     def _get_bytes(self, remotefile: str):
@@ -500,20 +501,21 @@ class ShellDriver(CommandMixin, Driver, CommandProtocol, FileTransferProtocol):
             buf = self._get_bytes(remotefile)
             fh.write(buf)
 
+    @renamed_kwargs(remotefile="filename", localfile="destination")
     @Driver.check_active
-    def get(self, remotefile: str, localfile: str):
+    def get(self, filename: str, destination: str):
         """ Download a file from the target.
         Will silently overwrite the local file if it already exists.
 
         Args:
-            remotefile (str): source filename on the target
-            localfile (str): destination filename on the local machine (can be relative)
+            filename (str): source filename on the target
+            destination (str): destination filename on the local machine (can be relative)
 
         Raises:
-            IOError: if localfile could not be written
+            IOError: if destination could not be written
             ExecutionError: if something went wrong
         """
-        self._get(remotefile, localfile)
+        self._get(filename, destination)
 
     @step(title='run_script', args=['data', 'timeout'])
     def _run_script(self, data: bytes, timeout: int = 60):
