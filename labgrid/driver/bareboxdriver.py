@@ -6,7 +6,7 @@ from pexpect import TIMEOUT
 from ..factory import target_factory
 from ..protocol import CommandProtocol, ConsoleProtocol, LinuxBootProtocol
 from ..step import step
-from ..util import gen_marker, Timeout, re_vt100
+from ..util import gen_marker, renamed_kwargs, Timeout, re_vt100
 from .common import Driver
 from .commandmixin import CommandMixin
 
@@ -60,10 +60,11 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
         """
         self._status = 0
 
+    @renamed_kwargs(cmd="command")
     @Driver.check_active
-    @step(args=['cmd'])
-    def run(self, cmd: str, *, timeout: int = 30):
-        return self._run(cmd, timeout=timeout)
+    @step(args=['command'])
+    def run(self, command: str, *, timeout: int = 30):
+        return self._run(command, timeout=timeout)
 
     def _run(self, cmd: str, *, timeout: int = 30, adjust_log_level: bool = True, codec: str = "utf-8", decodeerrors: str = "strict"):  # pylint: disable=unused-argument,line-too-long
         """

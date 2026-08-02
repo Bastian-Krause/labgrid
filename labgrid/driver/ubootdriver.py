@@ -5,7 +5,7 @@ from pexpect import TIMEOUT
 
 from ..factory import target_factory
 from ..protocol import CommandProtocol, ConsoleProtocol, LinuxBootProtocol
-from ..util import gen_marker, re_vt100, Timeout
+from ..util import gen_marker, re_vt100, renamed_kwargs, Timeout
 from ..step import step
 from .common import Driver
 from .commandmixin import CommandMixin
@@ -98,20 +98,21 @@ class UBootDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
 
         return None
 
+    @renamed_kwargs(cmd="command")
     @Driver.check_active
-    @step(args=['cmd'], result=True)
-    def run(self, cmd, timeout=30):
+    @step(args=['command'], result=True)
+    def run(self, command, timeout=30):
         """
         Runs the specified command on the shell and returns the output.
 
         Args:
-            cmd (str): command to run on the shell
+            command (str): command to run on the shell
             timeout (int): optional, how long to wait for completion
 
         Returns:
             Tuple[List[str],List[str], int]: if successful, None otherwise
         """
-        return self._run(cmd, timeout=timeout)
+        return self._run(command, timeout=timeout)
 
     def get_status(self):
         """Retrieve status of the UBootDriver.

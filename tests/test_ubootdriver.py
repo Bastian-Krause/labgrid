@@ -30,6 +30,17 @@ class TestUBootDriver:
         assert res == (['success'], [], 0)
         d._run.assert_called_once_with("test", timeout=30)
 
+    def test_uboot_run_deprecated_cmd_kwarg(self, target_with_fakeconsole, mocker):
+        t = target_with_fakeconsole
+        d = UBootDriver(t, "uboot")
+        d.console.rxq.append(b"U-Boot 2019\n")
+        d = t.get_driver(UBootDriver)
+        d._run = mocker.MagicMock(return_value=(['success'], [], 0))
+        with pytest.warns(DeprecationWarning, match="'cmd' is deprecated, use 'command' instead"):
+            res = d.run(cmd="test")
+        assert res == (['success'], [], 0)
+        d._run.assert_called_once_with("test", timeout=30)
+
     def test_uboot_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
         d = UBootDriver(t, "uboot")

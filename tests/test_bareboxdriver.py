@@ -29,6 +29,18 @@ class TestBareboxDriver:
         res = d.run("test")
         assert res == (['success'], [], 0)
 
+    def test_barebox_run_deprecated_cmd_kwarg(self, target_with_fakeconsole, mocker):
+        t = target_with_fakeconsole
+        d = BareboxDriver(t, "barebox")
+        d = t.get_driver(BareboxDriver, activate=False)
+        # mock for d._run('echo $global.loglevel')
+        d._run = mocker.MagicMock(return_value=(['7'], [], 0))
+        t.activate(d)
+        d._run = mocker.MagicMock(return_value=(['success'], [], 0))
+        with pytest.warns(DeprecationWarning, match="'cmd' is deprecated, use 'command' instead"):
+            res = d.run(cmd="test")
+        assert res == (['success'], [], 0)
+
     def test_barebox_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
         d = BareboxDriver(t, "barebox")

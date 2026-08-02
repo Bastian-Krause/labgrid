@@ -14,7 +14,7 @@ import xmodem
 from ..factory import target_factory
 from ..protocol import CommandProtocol, ConsoleProtocol, FileTransferProtocol
 from ..step import step
-from ..util import gen_marker, Timeout, re_vt100
+from ..util import gen_marker, renamed_kwargs, Timeout, re_vt100
 from .commandmixin import CommandMixin
 from .common import Driver
 from .exception import ExecutionError
@@ -104,10 +104,11 @@ class ShellDriver(CommandMixin, Driver, CommandProtocol, FileTransferProtocol):
         exitcode = int(match.group(2))
         return (data, [], exitcode)
 
+    @renamed_kwargs(cmd="command")
     @Driver.check_active
-    @step(args=['cmd'], result=True)
-    def run(self, cmd, timeout=30.0, codec="utf-8", decodeerrors="strict"):
-        return self._run(cmd, timeout=timeout, codec=codec, decodeerrors=decodeerrors)
+    @step(args=['command'], result=True)
+    def run(self, command, timeout=30.0, codec="utf-8", decodeerrors="strict"):
+        return self._run(command, timeout=timeout, codec=codec, decodeerrors=decodeerrors)
 
     @step()
     def _await_login(self):

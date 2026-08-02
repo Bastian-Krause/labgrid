@@ -18,6 +18,7 @@ from .commandmixin import CommandMixin
 from .common import Driver
 from ..step import step
 from .exception import ExecutionError
+from ..util.deprecation import renamed_kwargs
 from ..util.helper import get_free_port
 from ..util.proxy import proxymanager
 from ..util.timeout import Timeout
@@ -195,10 +196,11 @@ class SSHDriver(CommandMixin, Driver, CommandProtocol, FileTransferProtocol):
 
         return control
 
+    @renamed_kwargs(cmd="command")
     @Driver.check_active
-    @step(args=['cmd'], result=True)
-    def run(self, cmd, codec="utf-8", decodeerrors="strict", timeout=None):
-        return self._run(cmd, codec=codec, decodeerrors=decodeerrors, timeout=timeout)
+    @step(args=['command'], result=True)
+    def run(self, command, codec="utf-8", decodeerrors="strict", timeout=None):
+        return self._run(command, codec=codec, decodeerrors=decodeerrors, timeout=timeout)
 
     def _run(self, cmd, codec="utf-8", decodeerrors="strict", timeout=None):
         """Execute `cmd` on the target.

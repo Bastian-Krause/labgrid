@@ -26,6 +26,23 @@ class TestShellDriver:
         res = d.run("test")
         assert res == (["success"], [], 0)
 
+    def test_run_deprecated_cmd_kwarg(self, target_with_fakeconsole, mocker):
+        t = target_with_fakeconsole
+        d = ShellDriver(t, "shell", prompt="dummy", login_prompt="dummy", username="dummy")
+        d.on_activate = mocker.MagicMock()
+        d = t.get_driver("ShellDriver")
+        d._run = mocker.MagicMock(return_value=(["success"], [], 0))
+
+        with pytest.warns(DeprecationWarning, match="'cmd' is deprecated, use 'command' instead"):
+            assert d.run(cmd="test") == (["success"], [], 0)
+        with pytest.warns(DeprecationWarning, match="'cmd' is deprecated, use 'command' instead"):
+            assert d.run_check(cmd="test") == ["success"]
+
+        assert d.run(command="test") == (["success"], [], 0)
+
+        with pytest.raises(TypeError):
+            d.run(cmd="test", command="test")
+
     def test_run_error(self, target_with_fakeconsole, mocker):
         t = target_with_fakeconsole
         d = ShellDriver(t, "shell", prompt="dummy", login_prompt="dummy", username="dummy")
