@@ -149,6 +149,8 @@ enable = [
     "E", # all checks from error category
 
     # warning checks (sorted alphabetically)
+    'arguments-differ',
+    'arguments-renamed',
     'deprecated-argument',
     'deprecated-class',
     'deprecated-decorator',
