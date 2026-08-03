@@ -5,7 +5,7 @@ class CommandProtocol(abc.ABC):
     """Abstract class for the CommandProtocol"""
 
     @abc.abstractmethod
-    def run(self, command: str):
+    def run(self, command: str, timeout=None):
         """
         Run a command
         """

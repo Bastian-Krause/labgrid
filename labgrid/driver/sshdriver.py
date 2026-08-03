@@ -196,10 +196,13 @@ class SSHDriver(CommandMixin, Driver, CommandProtocol, FileTransferProtocol):
 
         return control
 
+    # SSHDriver has taken codec and decodeerrors before timeout since long before CommandProtocol
+    # declared timeout. Moving timeout to the protocol's position would silently change what
+    # run("cmd", "utf-8") means, so keep the order and accept the warning here.
     @renamed_kwargs(cmd="command")
     @Driver.check_active
     @step(args=['command'], result=True)
-    def run(self, command, codec="utf-8", decodeerrors="strict", timeout=None):
+    def run(self, command, codec="utf-8", decodeerrors="strict", timeout=None):  # pylint: disable=arguments-renamed
         return self._run(command, codec=codec, decodeerrors=decodeerrors, timeout=timeout)
 
     def _run(self, cmd, codec="utf-8", decodeerrors="strict", timeout=None):

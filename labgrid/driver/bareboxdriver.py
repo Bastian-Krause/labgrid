@@ -63,7 +63,7 @@ class BareboxDriver(CommandMixin, Driver, CommandProtocol, LinuxBootProtocol):
     @renamed_kwargs(cmd="command")
     @Driver.check_active
     @step(args=['command'])
-    def run(self, command: str, *, timeout: int = 30):
+    def run(self, command: str, timeout: int = 30):
         return self._run(command, timeout=timeout)
 
     def _run(self, cmd: str, *, timeout: int = 30, adjust_log_level: bool = True, codec: str = "utf-8", decodeerrors: str = "strict"):  # pylint: disable=unused-argument,line-too-long
