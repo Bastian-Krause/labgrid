@@ -23,6 +23,12 @@ Breaking changes in 27.0
 - ``CommandProtocol.wait_for()`` and ``CommandProtocol.poll_until_success()``
   now declare the parameters they have always required. Both were declared
   without any parameters, which no implementation could satisfy.
+- ``CommandProtocol.run()`` now declares its ``timeout`` argument, which
+  ``poll_until_success()`` has always required implementations to accept.
+  Existing callers are unaffected, including those passing ``timeout``
+  positionally. Out-of-tree drivers implementing ``run()`` without a ``timeout``
+  argument are now reported by pylint's ``arguments-differ`` — such a driver
+  already fails at runtime as soon as ``poll_until_success()`` is used.
 
 Release 26.0 (Released Jun 06, 2026)
 ------------------------------------
