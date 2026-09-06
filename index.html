@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<!-- without this a phone lays the page out at 980px and scales it down,
+     which makes every pane unreadable before anything else matters -->
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>labgrid Web Demo</title>
+<link rel="stylesheet" href="./vendor/xterm/xterm.css">
+<style>
+  body { font: 14px/1.5 system-ui, sans-serif; margin: 0; padding: 1.5rem; background: #1c1c1c; color: #ddd; }
+  h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 .25rem; }
+  p.sub { margin: 0 0 1rem; color: #999; max-width: 70ch; }
+  p.sub a { color: #9cf; }
+  #panes { display: flex; gap: 1rem; align-items: stretch; flex-wrap: wrap; }
+  .pane-title { font-family: ui-monospace, monospace; font-size: 11px; color: #888;
+                text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3rem; }
+  /* the terminal defines its own pixel width (cols x cell); let the pane hug
+     it and scroll on narrow windows rather than overflow the page */
+  #console-pane { flex: 0 0 auto; max-width: 100%; }
+  /* position: relative matters -- xterm's viewport is absolutely positioned, so
+     without a containing block here it escapes the scroll clip and widens the
+     whole page on a narrow screen */
+  #terminal { overflow-x: auto; position: relative; }
+  #repl-pane { flex: 1 1 380px; min-width: 340px; display: flex; flex-direction: column; }
+  #repl { flex: 1; display: flex; flex-direction: column; background: #000;
+          border: 1px solid #333; border-radius: 0 4px 4px 4px; min-height: 380px; max-height: 460px;
+          font-family: ui-monospace, monospace; font-size: 12px; line-height: 1.45; }
+  #repl-scroll { flex: 1; overflow-y: auto; padding: .5rem .6rem; }
+  #repl-out { white-space: pre-wrap; word-break: break-word; }
+  .repl-in-echo { color: #9cf; }
+  .repl-py { color: #ddd; }
+  .repl-err { color: #f88; }
+  .repl-pre { color: #888; }      /* page-assembly lines, before the banner */
+  .repl-comment { color: #6a9955; } /* status commentary and typed comments */
+  /* the prompt lives inline at the end of the scrollback, like a real REPL,
+     and disappears while code is running */
+  #repl-line { display: flex; }
+  #repl-line:has(input:disabled) { visibility: hidden; }
+  #repl-ps { color: #7fb; white-space: pre; }
+  #repl-in { flex: 1; background: none; border: none; outline: none; color: #ddd;
+             font: inherit; padding: 0; }
+  /* Tabs, drawn as tabs: the strip sits on the pane's top border and the active
+     one has no bottom edge, so it reads as the front of the box rather than as
+     a row of buttons above it. The -1px is what makes the two borders one. */
+  #tabs { display: flex; flex-wrap: wrap; gap: .2rem; margin-bottom: -1px; position: relative; z-index: 1; }
+  #tabs button { font-family: ui-monospace, monospace; font-size: 11px; color: #888;
+                 text-transform: uppercase; letter-spacing: .08em; background: #141414;
+                 border: 1px solid #333; border-radius: 4px 4px 0 0;
+                 padding: .25rem .5rem; cursor: pointer; }
+  #tabs button:hover { color: #bbb; background: #1a1a1a; }
+  #tabs button[aria-selected="true"] { color: #ddd; background: #000; border-bottom-color: #000; }
+  /* the padlock marks a tab that will not take edits. Forced monochrome: it is
+     the only glyph on the page that would otherwise arrive in colour. */
+  .ro { font-size: 11px; filter: grayscale(1); opacity: .95; font-variant-emoji: text; }
+  /* the editors sit in the same frame the scrollback uses, so the pane keeps
+     one size whichever tab is up */
+  /* CodeFlask's own root is position:absolute at 100%/100%, so the panel has to
+     be the thing it anchors to: positioned, with a height, and clipping. Its
+     inner pre/textarea scroll by themselves. */
+  #view-yaml, #view-test, #view-ini { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  .codeflask .codeflask__flatten { font-size: 12px; font-family: ui-monospace, monospace; }
+  /* The gutter's background has to come from the pseudo-element, not from
+     .codeflask__lines: CodeFlask slides the line-number column up with the code
+     but leaves it one pane tall, so its own background scrolls out of view and
+     whatever is behind the numbers shows through. What is behind them is a #eee
+     strip CodeFlask paints unconditionally -- it is in the structural sheet, not
+     the theme defaultTheme:false switches off -- so every editor grew a white
+     rectangle down its left edge the moment it was scrolled. The id is there to
+     beat the vendor rule, which is injected after this file's CSS and would
+     otherwise win the tie. */
+  #panes .codeflask.codeflask--has-line-numbers:before { background: #000; }
+  .codeflask .codeflask__lines { color: #555; font-size: 12px;
+                                 font-family: ui-monospace, monospace; z-index: 2; }
+  /* CodeFlask ships with defaultTheme off, so these are the whole colour scheme:
+     the palette the scrollback already uses, rather than a vendored theme */
+  .codeflask, .codeflask textarea { background: #000; color: #ddd; caret-color: #7fb; }
+  .codeflask .token.comment, .codeflask .token.prolog { color: #6a9955; }
+  .codeflask .token.string, .codeflask .token.triple-quoted-string { color: #ce9178; }
+  .codeflask .token.keyword, .codeflask .token.boolean { color: #7fb; }
+  .codeflask .token.function, .codeflask .token.class-name { color: #9cf; }
+  .codeflask .token.number, .codeflask .token.builtin { color: #b5cea8; }
+  .codeflask .token.decorator, .codeflask .token.key, .codeflask .token.tag { color: #dcdcaa; }
+  .codeflask .token.operator, .codeflask .token.punctuation { color: #999; }
+  #run-tests { align-self: flex-start; margin: .4rem .6rem; font: inherit; font-size: 11px;
+               color: #7fb; background: #111; border: 1px solid #333; border-radius: 3px;
+               padding: .2rem .5rem; cursor: pointer; }
+  #status { margin-top: .75rem; font-family: ui-monospace, monospace; font-size: 12px; color: #7fb; white-space: pre-wrap; }
+  /* the two notes under the panes: side by side when there is room, stacked
+     when there is not */
+  #notes { display: grid; gap: 1.5rem 2.5rem; margin: 1.75rem 0 0;
+           grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); max-width: 1100px; }
+  #notes h2 { font-size: 11px; font-weight: 600; color: #888; text-transform: uppercase;
+              letter-spacing: .08em; margin: 0 0 .5rem; font-family: ui-monospace, monospace; }
+  #notes p { margin: 0 0 .5rem; color: #bbb; }
+  #notes pre { margin: 0 0 .9rem; padding: .5rem .6rem; background: #000; border: 1px solid #222;
+               border-radius: 3px; overflow-x: auto; font-size: 12px; line-height: 1.45; }
+  #notes code { font-family: ui-monospace, monospace; }
+  #notes pre code { color: #ddd; }
+  #notes .c { color: #6a9955; }
+  #notes a { color: #9cf; }
+  #notes ul { margin: 0; padding-left: 1.1rem; color: #bbb; }
+  #notes li { margin-bottom: .35rem; }
+
+  /* Phones. The panes already stack (#panes wraps), so what is left is room and
+     reach: less page padding, panes that take their height from the screen
+     rather than a desktop constant, and touch targets worth aiming at. */
+  @media (max-width: 720px) {
+    body { padding: .75rem; }
+    #panes { gap: .75rem; }
+    #repl { min-height: min(380px, 45vh); max-height: min(460px, 55vh); }
+  }
+  /* 16px is the threshold under which iOS zooms the page when an input takes
+     focus, and it never zooms back out. Only the focused input matters, so it
+     is the prompt line that reaches it -- the scrollback stays at the density
+     of the terminal beside it. */
+  @media (pointer: coarse), (max-width: 720px) {
+    #repl-line { font-size: 16px; }
+    #tabs button { padding: .45rem .6rem; }
+  }
+  code { color: #9cf; }
+</style>
+</head>
+<body>
+<h1>labgrid Web Demo</h1>
+<p class="sub">A QEMU terminal and a Python prompt, prepared for driving the emulated board with
+labgrid's <a href="https://labgrid.readthedocs.io/en/latest/configuration.html#qemudriver">QEMUDriver</a>,
+<a href="https://labgrid.readthedocs.io/en/latest/configuration.html#bareboxdriver">BareboxDriver</a> and
+<a href="https://labgrid.readthedocs.io/en/latest/configuration.html#shelldriver">ShellDriver</a>.
+Left: the guest's serial console &mdash; type into it while labgrid is working. Right: the prompt, in
+labgrid's own namespace, where the demo script has already left you a
+<code>target</code> and a <code>strategy</code>.</p>
+<div id="panes">
+  <div id="console-pane">
+    <div class="pane-title">serial console</div>
+    <div id="terminal"></div>
+  </div>
+  <div id="repl-pane">
+    <div id="tabs" role="tablist">
+      <button role="tab" data-view="repl" aria-selected="true">python &middot; labgrid</button>
+      <button role="tab" data-view="yaml" title="read-only">env.yaml <span class="ro">🔒︎</span></button>
+      <button role="tab" data-view="test">tests/test_demo.py</button>
+      <button role="tab" data-view="ini">pytest.ini</button>
+    </div>
+    <div id="repl">
+      <div id="repl-scroll">
+        <div id="repl-out"></div>
+        <div id="repl-line"><span id="repl-ps"></span><input id="repl-in" autocomplete="off" spellcheck="false"
+               autocapitalize="none" autocorrect="off" enterkeyhint="go" disabled></div>
+      </div>
+      <div id="view-yaml" hidden></div>
+      <div id="view-test" hidden></div>
+      <div id="view-ini" hidden></div>
+    </div>
+  </div>
+</div>
+<div id="status">booting&hellip;</div>
+
+<div id="notes">
+  <section>
+    <h2>What to try</h2>
+    <p>At the Python prompt, once the demo has reached barebox:</p>
+<pre><code>strategy.transition('shell')   <span class="c"># or 'barebox', or 'off'</span>
+strategy.barebox.run_check('version')
+strategy.shell.run_check('uname -a')</code></pre>
+    <p>labgrid's step log &mdash; what <code>-vv</code> turns on for pytest:</p>
+<pre><code>import logging
+from labgrid.logging import basicConfig, StepLogger
+basicConfig(level=logging.INFO)
+StepLogger.start()</code></pre>
+    <p>The bundled suite, through labgrid's own pytest plugin:</p>
+<pre><code>pytest.main()
+pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></code></pre>
+    <p>Edit <code>tests/test_demo.py</code> or <code>pytest.ini</code> in their tabs and run it
+    again &mdash; leaving the tab is what saves. Edits last for the session only.</p>
+  </section>
+
+  <section>
+    <h2>How it works</h2>
+    <ul>
+      <li><a href="https://github.com/labgrid-project/labgrid">labgrid</a> is unmodified, installed
+        from a wheel built from upstream. Only five <code>QEMUDriver</code> methods are rebound, to
+        talk to this page instead of to a POSIX host.</li>
+      <li><a href="https://pyodide.org/">Pyodide</a> is CPython compiled to WebAssembly. labgrid and
+        pytest run there, in a worker, where they are allowed to block.</li>
+      <li><a href="https://github.com/ktock/qemu-wasm">QEMU-WASM</a> is
+        <a href="https://www.qemu.org/">QEMU</a> built with
+        <a href="https://emscripten.org/">Emscripten</a>; it boots
+        <a href="https://www.barebox.org/">barebox</a> and Linux from the guest images, in this tab.</li>
+      <li><a href="https://xtermjs.org/">xterm.js</a> and
+        <a href="https://github.com/mame/xterm-pty">xterm-pty</a> are the terminal. The bridge taps the
+        pty master &mdash; where a human sits, and labgrid is just a second human.</li>
+      <li><a href="https://github.com/kazzkiq/CodeFlask">CodeFlask</a> and
+        <a href="https://prismjs.com/">Prism</a> are the editor tabs.</li>
+    </ul>
+  </section>
+</div>
+
+<!-- Cross-origin isolation. Required: SharedArrayBuffer is needed both by
+     QEMU-WASM's pthreads and by the console bridge. This service worker sets
+     COOP/COEP client-side so the site works on any dumb static host; a host
+     that sends the two headers itself (as the test server in tests/lib.mjs
+     does) makes it a no-op. -->
+<script src="./coi-serviceworker.js"></script>
+
+<script src="./vendor/xterm/xterm.js"></script>
+<script src="./vendor/xterm/xterm-pty.js"></script>
+
+<!-- The editor. CodeFlask bundles Prism and publishes it as window.Prism, but
+     only with markup/css/clike/js -- so python and yaml come from Prism's own
+     component files, loaded *after* it. They assign into that same global, which
+     is CodeFlask's own Prism, so the grammars are simply there to be used. -->
+<script src="./vendor/codeflask/codeflask.min.js"></script>
+<script src="./vendor/codeflask/prism-python.min.js"></script>
+<script src="./vendor/codeflask/prism-yaml.min.js"></script>
+<script src="./vendor/codeflask/prism-ini.min.js"></script>
+
+<!-- The Emscripten module object has to exist as a global before anything
+     touches it, and both paths must be absolute: the pthread workers resolve
+     them relative to their own URL, so a relative path silently doubles the
+     directory and every worker dies fetching it. Module.arguments is filled in
+     later, from labgrid's own get_qemu_base_args(), and the guest files are
+     staged by runtime/js/guestfs.js from the image's guest.json manifest. -->
+<script>
+  // The one QEMU build, carrying the four upstream fixes (see build_qemu_wasm/).
+  // ?qemuimg=<name> selects a different directory under qemu/.
+  var QEMU_IMAGE = new URLSearchParams(location.search).get("qemuimg") || "vexpress";
+  var QEMU_BASE = new URL("./qemu/" + QEMU_IMAGE + "/", location.href).href;
+  var Module = {
+    locateFile: function (path) { return QEMU_BASE + path; },
+    mainScriptUrlOrBlob: QEMU_BASE + "out.js",
+  };
+</script>
+
+<script type="module" src="./runtime/js/main.js"></script>
+</body>
+</html>

@@ -1,0 +1,12 @@
+{
+  "files": [
+    {
+      "path": "/demo/images/mini.norimg",
+      "url": "images/mini.norimg.gz"
+    },
+    {
+      "path": "/images/mini.hdimg",
+      "url": "images/mini.hdimg.gz"
+    }
+  ]
+}
