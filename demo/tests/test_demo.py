@@ -49,11 +49,12 @@ def test_rauc_streams_a_bundle_over_https(strategy):
     assert "inet " in addr, f"eth0 got no DHCP lease (is ?net=0 set?):\n{addr}"
 
     # the update: streamed over HTTPS via the in-browser proxy, which the guest
-    # picked up from /etc/profile.d (no https_proxy= prefix needed). Its MITM
-    # cert could be pinned with SSL_CERT_FILE=/run/wasmenv/proxy.crt; here we
-    # skip verification with --tls-no-verify to keep the demo self-contained.
+    # picked up from /etc/profile.d -- along with SSL_CERT_FILE pointing at the
+    # proxy's MITM CA, so the TLS handshake is *verified*, no https_proxy= prefix
+    # and no --tls-no-verify. (The guest runs real browser time, -rtc base=utc,
+    # which that freshly-minted MITM cert needs.)
     out = shell.run_check(
-        f"rauc install --tls-no-verify {RAUC_BUNDLE}",
+        f"rauc install {RAUC_BUNDLE}",
         timeout=600,
     )
     assert any("succeeded" in line.lower() for line in out), "\n".join(out)
