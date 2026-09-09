@@ -144,10 +144,10 @@ def bind(bridge):
         self.qmp = None
 
     def _read(self, size=1, timeout=10, max_size=None):
-        # Matches stock behaviour: return whatever has arrived, up to a page,
-        # and raise pexpect.TIMEOUT if nothing arrives in time.
-        size = 4096
-        size = min(max_size, size) if max_size else size
+        # Matches stock behaviour: return whatever has arrived, up to a page, and
+        # raise pexpect.TIMEOUT if nothing arrives in time. The size argument is
+        # ignored (stock reads a full page too), but max_size still caps it.
+        size = min(max_size, 4096) if max_size else 4096
         chunk = bridge.readConsole(int(timeout * 1000), size)
         # Belt and braces: JS undefined arrives as None, but a JS null would
         # arrive as pyodide's JsNull, which is not None and has no .to_py().

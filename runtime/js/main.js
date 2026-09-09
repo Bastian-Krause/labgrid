@@ -7,7 +7,7 @@
 // leaves Module.pty as the untouched xterm-pty Slave, so emscripten-pty.js and
 // the TTY poll patch behave exactly as they do upstream.
 
-import { createRing, createNote, RingWriter, setNote, IDLE, RUNNING, STOPPED } from "./ringbuffer.js";
+import { createRing, createNote, RingWriter, setNote, RUNNING, STOPPED } from "./ringbuffer.js";
 import { createQmpChannel } from "./qmpchannel.js";
 import { fetchGuestManifest, stageGuestFiles } from "./guestfs.js";
 import { initEditors } from "./editor.js";
@@ -415,14 +415,9 @@ worker.onmessage = (event) => {
   }
 };
 
-/** Run Python in the worker. Returns {ok, value|error}. */
-function runPython(code) {
-  const id = nextId++;
-  return new Promise((resolve) => {
-    pending.set(id, resolve);
-    worker.postMessage({ type: "run", code, id });
-  });
-}
+/** Run Python in the worker. Returns {ok, value|error}. A "run" is just a
+ * worker command like the REPL ones below, so it shares runRepl's plumbing. */
+const runPython = (code) => runRepl("run", { code });
 window.__run = runPython;
 
 // --- the REPL pane ----------------------------------------------------------

@@ -80,8 +80,6 @@ export function createFakeQmp(onByte, counters, power) {
 
   let line = "";
   return {
-    path: "(replay)",
-    nodes: {},
     attachPolls: () => true,
     toQemu: [],
     fromQemu,

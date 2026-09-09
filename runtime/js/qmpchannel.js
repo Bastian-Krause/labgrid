@@ -60,9 +60,6 @@ export function createQmpChannel(Module, path = "/dev/lgqmp", onByte = null, cou
 
   const decoder = new TextDecoder();
   return {
-    path,
-    nodes,
-
     /**
      * Give the two devices honest poll semantics. Emscripten's default for a
      * device without stream_ops.poll is DEFAULT_POLLMASK -- always readable and

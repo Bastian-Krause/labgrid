@@ -302,34 +302,39 @@ f"{sys.version.split()[0]}|{__dist_version('labgrid')}"
   post({ type: "ready", banner }); // the banner is the "ready" the human sees
 }
 
-async function run(msg) {
+/** Run fn and post its return value back to the main thread as this command's
+ * result; a throw becomes {ok:false}. Every worker command shares this shape. */
+async function respond(id, fn) {
   try {
-    const value = await pyodide.runPythonAsync(msg.code);
-    // Only structured-cloneable values survive postMessage. Python objects that
-    // do not convert cleanly (a re.Match from expect(), say) would otherwise
-    // fail with an opaque DataCloneError, so fall back to their repr.
-    let out;
-    try {
-      out = value?.toJs ? value.toJs({ create_pyproxies: false }) : value;
-      structuredClone(out);
-    } catch {
-      out = String(value);
-    }
-    post({ type: "result", id: msg.id, ok: true, value: out });
+    post({ type: "result", id, ok: true, value: await fn() });
   } catch (err) {
-    post({ type: "result", id: msg.id, ok: false, error: String(err) });
+    post({ type: "result", id, ok: false, error: String(err) });
   }
 }
 
-async function repl(msg) {
+const run = (msg) => respond(msg.id, async () => {
+  const value = await pyodide.runPythonAsync(msg.code);
+  // Only structured-cloneable values survive postMessage. Python objects that
+  // do not convert cleanly (a re.Match from expect(), say) would otherwise fail
+  // with an opaque DataCloneError, so fall back to their repr.
   try {
-    pyodide.globals.set("__repl_line", msg.code);
-    const out = await pyodide.runPythonAsync("await __repl_push(__repl_line)");
-    post({ type: "result", id: msg.id, ok: true, value: out });
-  } catch (err) {
-    post({ type: "result", id: msg.id, ok: false, error: String(err) });
+    const out = value?.toJs ? value.toJs({ create_pyproxies: false }) : value;
+    structuredClone(out);
+    return out;
+  } catch {
+    return String(value);
   }
-}
+});
+
+const repl = (msg) => respond(msg.id, () => {
+  pyodide.globals.set("__repl_line", msg.code);
+  return pyodide.runPythonAsync("await __repl_push(__repl_line)");
+});
+
+const replComplete = (msg) => respond(msg.id, () => {
+  pyodide.globals.set("__repl_source", msg.source);
+  return pyodide.runPythonAsync("__repl_complete(__repl_source)");
+});
 
 /**
  * Put a file into the filesystem, and forget any module that came from it.
@@ -339,32 +344,18 @@ async function repl(msg) {
  * Matching on __file__ rather than guessing the module name keeps that true
  * whatever import mode pytest resolved it under.
  */
-async function writeFile(msg) {
-  try {
-    pyodide.FS.writeFile(msg.path, msg.source);
-    pyodide.globals.set("__written_path", msg.path);
-    await pyodide.runPythonAsync(`
+const writeFile = (msg) => respond(msg.id, async () => {
+  pyodide.FS.writeFile(msg.path, msg.source);
+  pyodide.globals.set("__written_path", msg.path);
+  await pyodide.runPythonAsync(`
 import sys
 for __name in [n for n, m in list(sys.modules.items())
                if getattr(m, "__file__", None) == __written_path]:
     del sys.modules[__name]
 del __written_path
 `);
-    post({ type: "result", id: msg.id, ok: true, value: msg.path });
-  } catch (err) {
-    post({ type: "result", id: msg.id, ok: false, error: String(err) });
-  }
-}
-
-async function replComplete(msg) {
-  try {
-    pyodide.globals.set("__repl_source", msg.source);
-    const out = await pyodide.runPythonAsync("__repl_complete(__repl_source)");
-    post({ type: "result", id: msg.id, ok: true, value: out });
-  } catch (err) {
-    post({ type: "result", id: msg.id, ok: false, error: String(err) });
-  }
-}
+  return msg.path;
+});
 
 self.onmessage = async (event) => {
   const msg = event.data;

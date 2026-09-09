@@ -26,9 +26,6 @@ class QEMUBareboxStrategy(Strategy):
 
     status = attr.ib(default=Status.unknown)
 
-    def __attrs_post_init__(self):
-        super().__attrs_post_init__()
-
     @never_retry
     @step(args=["status"])
     def transition(self, status, *, step):
@@ -51,7 +48,7 @@ class QEMUBareboxStrategy(Strategy):
             # interrupt barebox
             self.target.activate(self.barebox)
         elif status == Status.shell:
-            # tansition to barebox
+            # transition to barebox
             self.transition(Status.barebox)
             # boot the disk's boot loader specification entry, then let
             # the stock ShellDriver log in once BusyBox' getty is up
