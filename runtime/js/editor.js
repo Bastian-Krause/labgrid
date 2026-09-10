@@ -18,6 +18,14 @@ const FILES = {
     language: "python",
     readonly: false,
   },
+  // read-only: the strategy the demo binds (env.yaml's imports:), shown so the
+  // transition()/force() the tests drive is visible, not editable
+  strategy: {
+    url: DEMO + "qemubareboxstrategy.py",
+    path: "/demo/qemubareboxstrategy.py",
+    language: "python",
+    readonly: true,
+  },
   // editable too: it is where the run's arguments live, so changing -ra to -v
   // here is the way to see a different pytest report
   ini: { url: DEMO + "pytest.ini", path: "/demo/pytest.ini", language: "ini", readonly: false },
@@ -68,6 +76,7 @@ export function initEditors({ writeFile, onPendingWrite }) {
     repl: document.getElementById("repl-scroll"),
     yaml: document.getElementById("view-yaml"),
     test: document.getElementById("view-test"),
+    strategy: document.getElementById("view-strategy"),
     ini: document.getElementById("view-ini"),
   };
   let current = "repl";

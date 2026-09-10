@@ -58,7 +58,7 @@
   /* CodeFlask's own root is position:absolute at 100%/100%, so the panel has to
      be the thing it anchors to: positioned, with a height, and clipping. Its
      inner pre/textarea scroll by themselves. */
-  #view-yaml, #view-test, #view-ini { flex: 1; min-height: 0; position: relative; overflow: hidden; }
+  #view-yaml, #view-test, #view-strategy, #view-ini { flex: 1; min-height: 0; position: relative; overflow: hidden; }
   .codeflask, .codeflask .codeflask__flatten { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
   .codeflask .codeflask__flatten { font-size: 12px; font-family: ui-monospace, monospace; }
   /* CodeFlask clips <pre>/<code> with overflow:hidden and scrolls by translating
@@ -156,8 +156,9 @@ labgrid's own namespace, where the demo script has already left you a
   <div id="repl-pane">
     <div id="tabs" role="tablist">
       <button role="tab" data-view="repl" aria-selected="true">python &middot; labgrid</button>
-      <button role="tab" data-view="yaml" title="read-only">env.yaml <span class="ro">🔒︎</span></button>
       <button role="tab" data-view="test">tests/test_demo.py</button>
+      <button role="tab" data-view="yaml" title="read-only">env.yaml <span class="ro">🔒︎</span></button>
+      <button role="tab" data-view="strategy" title="read-only">qemubareboxstrategy.py <span class="ro">🔒︎</span></button>
       <button role="tab" data-view="ini">pytest.ini</button>
     </div>
     <div id="repl">
@@ -168,6 +169,7 @@ labgrid's own namespace, where the demo script has already left you a
       </div>
       <div id="view-yaml" hidden></div>
       <div id="view-test" hidden></div>
+      <div id="view-strategy" hidden></div>
       <div id="view-ini" hidden></div>
     </div>
   </div>
