@@ -48,11 +48,13 @@ def test_rauc_streams_a_bundle_over_https(env, target, strategy):
 
     strategy.transition("shell")
     shell = strategy.shell
-    # udhcpc ran at boot; the lease is already up. Networking is on by default,
-    # so a missing lease is a real failure, not a reason to skip -- the whole
-    # point of this test is to stream the bundle.
-    addr = "\n".join(shell.run("ip -4 addr show eth0")[0])
-    assert "inet " in addr, f"eth0 got no DHCP lease (is ?net=0 set?):\n{addr}"
+    # udhcpc ran at boot; the lease is already up. Ask labgrid's own ShellDriver
+    # helpers rather than parsing `ip addr` by hand -- and go via the default
+    # route's device, so this stays correct on real hardware where the interface
+    # may not be eth0. Networking is on by default, so a missing lease is a real
+    # failure, not a reason to skip: streaming the bundle is the whole point.
+    iface = shell.get_default_interface_device_name()
+    assert shell.get_ip_addresses(iface), f"{iface} got no DHCP lease (is ?net=0 set?)"
 
     # the update: streamed over HTTPS via the in-browser proxy, which the guest
     # picked up from /etc/profile.d -- along with SSL_CERT_FILE pointing at the
