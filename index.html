@@ -156,7 +156,7 @@ labgrid's own namespace, where the demo script has already left you a
   <div id="repl-pane">
     <div id="tabs" role="tablist">
       <button role="tab" data-view="repl" aria-selected="true">python &middot; labgrid</button>
-      <button role="tab" data-view="test">tests/test_demo.py</button>
+      <button role="tab" data-view="test">test_demo.py</button>
       <button role="tab" data-view="yaml" title="read-only">env.yaml <span class="ro">🔒︎</span></button>
       <button role="tab" data-view="strategy" title="read-only">qemubareboxstrategy.py <span class="ro">🔒︎</span></button>
       <button role="tab" data-view="ini">pytest.ini</button>
@@ -191,12 +191,12 @@ StepLogger.start()</code></pre>
     <p>The bundled suite, through labgrid's own pytest plugin:</p>
 <pre><code>pytest.main()
 pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></code></pre>
-    <p>Edit <code>tests/test_demo.py</code> or <code>pytest.ini</code> in their tabs and run it
+    <p>Edit <code>test_demo.py</code> or <code>pytest.ini</code> in their tabs and run it
     again &mdash; leaving the tab is what saves. Edits last for the session only.</p>
     <p>Stream a real <a href="https://rauc.io">RAUC</a> update over HTTPS &mdash; an in-browser network
     stack gives the guest connectivity by default, so just run the test that pulls a signed bundle
     through the browser and writes the bootloader slot:</p>
-<pre><code>pytest.main(['-v', 'tests/test_demo.py::test_rauc_streams_a_bundle_over_https'])</code></pre>
+<pre><code>pytest.main(['-v', 'test_demo.py::test_rauc_streams_a_bundle_over_https'])</code></pre>
     <p>The bundle is fetched in HTTP ranges (it never lands on disk whole) and the barebox banner
     changes after the next boot.</p>
   </section>

@@ -13,8 +13,8 @@ const DEMO = new URL("../../demo/", import.meta.url).href;
 const FILES = {
   yaml: { url: DEMO + "env.yaml", path: "/demo/env.yaml", language: "yaml", readonly: true },
   test: {
-    url: DEMO + "tests/test_demo.py",
-    path: "/demo/tests/test_demo.py",
+    url: DEMO + "test_demo.py",
+    path: "/demo/test_demo.py",
     language: "python",
     readonly: false,
   },

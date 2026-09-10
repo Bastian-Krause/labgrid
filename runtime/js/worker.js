@@ -199,11 +199,12 @@ async function init(msg) {
   // stage the demo's environment and script where labgrid expects them
   const demo = new URL("../../demo/", import.meta.url).href;
   pyodide.FS.mkdirTree(DEMO_DIR);
-  // conftest.py, pytest.ini and tests/ are the pytest half of the demo; see the
-  // PYTEST_DISABLE_PLUGIN_AUTOLOAD note below. stageDemoFile mkdirTree's the
-  // nested path, so tests/ needs nothing extra.
+  // conftest.py, pytest.ini and test_demo.py are the pytest half of the demo;
+  // see the PYTEST_DISABLE_PLUGIN_AUTOLOAD note below. The suite is a single
+  // file next to the config (no tests/ subdir, no testpaths), so a bare
+  // pytest.main() at the prompt discovers it from the rootdir.
   for (const name of ["env.yaml", "demo.py", "conftest.py", "pytest.ini",
-                      "tests/test_demo.py"]) {
+                      "test_demo.py"]) {
     await stageDemoFile(demo, name);
   }
 
