@@ -46,22 +46,16 @@ def test_rauc_streams_a_bundle_over_https(env, target, strategy):
     strategy.transition("barebox")
     before = "\n".join(strategy.barebox.run_check("version"))
 
+    # transition("shell") waited for the DHCP lease (the strategy makes a shell
+    # reached with networking on a *networked* shell), so the interface is up.
     strategy.transition("shell")
-    shell = strategy.shell
-    # udhcpc ran at boot; the lease is already up. Ask labgrid's own ShellDriver
-    # helpers rather than parsing `ip addr` by hand -- and go via the default
-    # route's device, so this stays correct on real hardware where the interface
-    # may not be eth0. Networking is on by default, so a missing lease is a real
-    # failure, not a reason to skip: streaming the bundle is the whole point.
-    iface = shell.get_default_interface_device_name()
-    assert shell.get_ip_addresses(iface), f"{iface} got no DHCP lease (is ?net=0 set?)"
 
     # the update: streamed over HTTPS via the in-browser proxy, which the guest
     # picked up from /etc/profile.d -- along with SSL_CERT_FILE pointing at the
     # proxy's MITM CA, so the TLS handshake is *verified*, no https_proxy= prefix
     # and no --tls-no-verify. (The guest runs real browser time, -rtc base=utc,
     # which that freshly-minted MITM cert needs.)
-    out = shell.run_check(f"rauc install {url}", timeout=600)
+    out = strategy.shell.run_check(f"rauc install {url}", timeout=600)
     assert any("succeeded" in line.lower() for line in out), "\n".join(out)
 
     # the new bootloader is live only after a power cycle
