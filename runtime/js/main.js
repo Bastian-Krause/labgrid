@@ -23,12 +23,6 @@ const QEMU_VERSION = "8.2.0"; // reported by the wasm build's own QMP greeting
 const REPLAY = new URLSearchParams(location.search).get("replay");
 const REPLAY_FIXTURE = REPLAY && REPLAY !== "1" ? REPLAY : "./fixtures/boot.json";
 
-// The in-browser network stack gives the guest's eth0 real connectivity (so
-// RAUC bundle streaming works). On by default; ?net=0 turns it off for a leaner
-// boot (~5 MB less) -- the automated tests use that, and it is there for anyone
-// who only wants the offline demo.
-const NET = new URLSearchParams(location.search).get("net") !== "0";
-
 const statusEl = document.getElementById("status");
 const state = {
   status: "starting",
@@ -301,21 +295,15 @@ async function startQemu(argv) {
     }
     setStatus("starting QEMU-WASM");
 
-    // The guest's socket netdev rides emscripten's WebSocket. By default the
-    // in-browser stack (ktock's stack.js + c2w-net-proxy) catches it and gives
-    // eth0 real connectivity; its MITM CA is staged for the wasm0 mount before
-    // QEMU starts. With ?net=0 nothing listens, the link stays down, and the
-    // guest boots normally (tests/nicprobe.mjs).
+    // The guest's socket netdev rides emscripten's WebSocket, which ktock's
+    // in-browser stack (stack.js + c2w-net-proxy) catches to give eth0 real
+    // connectivity; its MITM CA is staged for the wasm0 mount before QEMU starts.
     // env.yaml always exposes /.wasmenv over 9p (wasm0), so the directory has to
-    // exist before QEMU starts even when networking is off, or the fsdev backend
-    // fails to open. With networking on, startBrowserNet also drops the proxy CA here.
+    // exist before QEMU starts or the fsdev backend fails to open; startBrowserNet
+    // then drops the proxy CA into it.
     Module.preRun = Module.preRun || [];
     Module.preRun.push((mod) => { try { mod.FS.mkdir("/.wasmenv"); } catch (e) { /* exists */ } });
-    if (NET) {
-      await startBrowserNet(Module);
-    } else {
-      Module.websocket = { url: "ws://127.0.0.1:9999/" };
-    }
+    await startBrowserNet(Module);
     Module.arguments = argv;
     const initEmscriptenModule = (await import(QEMU_BASE + "out.js")).default;
     await initEmscriptenModule(Module);
@@ -600,10 +588,10 @@ state.editors = initEditors({
   onPendingWrite: (p) => { pendingWrite = p.catch(() => {}); },
 });
 
-// With networking on, tell the worker where to fetch the RAUC bundle from so it
-// can put it in Pyodide's filesystem at the path env.yaml's `images: rauc_bundle`
-// resolves to -- that is the file HTTPProviderDriver.stage() reads and streams
-// back to the guest. It rides next to the guest images (QEMU_BASE, from
-// index.html); with ?net=0 or replay there is no streaming, so it is skipped.
-const raucBundleUrl = NET && !REPLAY ? QEMU_BASE + "images/rauc/demo.raucb" : null;
+// Tell the worker where to fetch the RAUC bundle from so it can put it in
+// Pyodide's filesystem at the path env.yaml's `images: rauc_bundle` resolves to
+// -- that is the file HTTPProviderDriver.stage() reads and streams back to the
+// guest. It rides next to the guest images (QEMU_BASE, from index.html); the
+// replay tier has no guest to stream to, so it is skipped there.
+const raucBundleUrl = REPLAY ? null : QEMU_BASE + "images/rauc/demo.raucb";
 worker.postMessage({ type: "init", ring, qmpRing, note, qemuVersion: QEMU_VERSION, raucBundleUrl });

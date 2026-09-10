@@ -73,21 +73,14 @@ class QEMUBareboxStrategy(Strategy):
     def _await_network(self, timeout=60, *, step):
         """Wait for eth0's DHCP lease, so a shell reached here is networked.
 
-        Only when the guest is actually networked: with the in-browser stack
-        attached (?net=1) its MITM CA is staged and /etc/profile.d exports
-        https_proxy at login, and udhcpc gets a lease a moment later -- so a test
-        that streams an update finds the network already up. The offline demo
-        (?net=0) exports no proxy (and the QEMU socket link reads "up" either
-        way, so the lease, not the carrier, is the real signal); there is nothing
-        to wait for, so this returns at once and a plain boot-to-shell stays fast.
+        The in-browser stack is attached at boot, so udhcpc gets a lease a moment
+        after the shell is up; wait for it here rather than making each test poll,
+        so streaming an update just works once we are in shell.
         """
-        proxy = "".join(self.shell.run('printf %s "$https_proxy"')[0]).strip()
-        if not proxy:
-            return  # no proxy -- the offline demo, not a networked shell
         deadline = time.monotonic() + timeout
         while not self.shell.get_ip_addresses("eth0"):
             if time.monotonic() >= deadline:
-                raise StrategyError("https_proxy is set but eth0 got no DHCP lease")
+                raise StrategyError("eth0 got no DHCP lease")
             time.sleep(1)
 
     @never_retry

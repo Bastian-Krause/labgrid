@@ -24,8 +24,8 @@ def test_linux_boots_to_a_shell(strategy):
 def test_rauc_streams_a_bundle_over_https(env, target, strategy):
     """Install a RAUC update by streaming it over HTTPS -- from inside the browser.
 
-    Needs the in-browser network stack, so open the page with ?net=1. The guest
-    brings up eth0 over DHCP at boot (mini-yocto's inittab), and when the browser
+    The in-browser network stack gives the guest connectivity: it brings up eth0
+    over DHCP at boot (mini-yocto's inittab), and when the browser
     proxy's MITM CA is present its /etc/profile.d snippet exports http(s)_proxy
     at login -- so a bare `rauc install` streams the bundle, no manual proxy
     prefix. The bundle is pulled over HTTP range requests (it never lands on disk
