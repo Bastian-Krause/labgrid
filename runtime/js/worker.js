@@ -57,6 +57,17 @@ const bridge = {
   writeQmp(bytes) {
     post({ type: "qmp-tx", bytes: Array.from(bytes) });
   },
+
+  /**
+   * Stage `bytes` so the guest can download them at .../__staged__/<name> via
+   * the in-browser proxy. HTTPProviderDriver.stage() (labgrid_wasm.py) calls
+   * this; the main thread holds the bytes and msw serves them (see
+   * browsernet.js). A typed array, not Array.from(), because a bundle is large
+   * and slice() just hands postMessage a clean copy to clone.
+   */
+  stageFile(name, bytes) {
+    post({ type: "stage-file", name, bytes: bytes.slice() });
+  },
 };
 
 /** Park until the main thread reports QEMU running or dead. */
@@ -206,6 +217,20 @@ async function init(msg) {
   for (const name of ["env.yaml", "demo.py", "conftest.py", "pytest.ini",
                       "test_demo.py"]) {
     await stageDemoFile(demo, name);
+  }
+
+  // The RAUC bundle the streaming test installs. Binary, and it lives with the
+  // guest images rather than under demo/, so main.js passes its URL (only with
+  // networking on). It lands at the path env.yaml's `images: rauc_bundle`
+  // resolves to, which is the file HTTPProviderDriver.stage() reads and streams
+  // back to the guest over the in-browser proxy.
+  if (msg.raucBundleUrl) {
+    status("staging rauc bundle");
+    const res = await fetch(msg.raucBundleUrl);
+    if (!res.ok) throw new Error(`rauc bundle: HTTP ${res.status}`);
+    pyodide.FS.mkdirTree(DEMO_DIR + "/images/rauc");
+    pyodide.FS.writeFile(DEMO_DIR + "/images/rauc/demo.raucb",
+                         new Uint8Array(await res.arrayBuffer()));
   }
 
   globalThis.labgridBridge = bridge;

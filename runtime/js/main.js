@@ -12,7 +12,7 @@ import { createQmpChannel } from "./qmpchannel.js";
 import { fetchGuestManifest, stageGuestFiles } from "./guestfs.js";
 import { initEditors } from "./editor.js";
 import { createFakeQmp, startFakeConsole } from "./fakeguest.js";
-import { startBrowserNet } from "./browsernet.js";
+import { startBrowserNet, stageBytes } from "./browsernet.js";
 
 const QEMU_VERSION = "8.2.0"; // reported by the wasm build's own QMP greeting
 
@@ -385,6 +385,11 @@ worker.onmessage = (event) => {
     case "qmp-tx":
       if (qmp) qmp.send(msg.bytes);
       break;
+    case "stage-file":
+      // HTTPProviderDriver.stage() ran in the worker; hold the bytes so the
+      // in-browser proxy can serve them to the guest (see browsernet.js).
+      stageBytes(msg.name, msg.bytes);
+      break;
     case "consumed":
       if (deferredAck && writer.free > LOW_WATER) {
         const ack = deferredAck;
@@ -595,4 +600,10 @@ state.editors = initEditors({
   onPendingWrite: (p) => { pendingWrite = p.catch(() => {}); },
 });
 
-worker.postMessage({ type: "init", ring, qmpRing, note, qemuVersion: QEMU_VERSION });
+// With networking on, tell the worker where to fetch the RAUC bundle from so it
+// can put it in Pyodide's filesystem at the path env.yaml's `images: rauc_bundle`
+// resolves to -- that is the file HTTPProviderDriver.stage() reads and streams
+// back to the guest. It rides next to the guest images (QEMU_BASE, from
+// index.html); with ?net=0 or replay there is no streaming, so it is skipped.
+const raucBundleUrl = NET && !REPLAY ? QEMU_BASE + "images/rauc/demo.raucb" : null;
+worker.postMessage({ type: "init", ring, qmpRing, note, qemuVersion: QEMU_VERSION, raucBundleUrl });

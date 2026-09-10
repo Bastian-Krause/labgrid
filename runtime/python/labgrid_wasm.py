@@ -16,6 +16,13 @@ checkout. This module does two things, both from outside the package:
    the target genuinely is QEMUDriver: the YAML says QEMUDriver, isinstance()
    holds, and repr() is unchanged.
 
+3. Rebinds one method, stage(), onto labgrid.driver.HTTPProviderDriver. Stock
+   stage() rsyncs the file into an HTTP docroot on the provider's host; there is
+   no host and no rsync here, so it instead hands the bytes to the page, which
+   serves them to the guest over the in-browser proxy at the provider's external
+   URL (see runtime/js/browsernet.js). get_export_vars() and the resource stay
+   stock, so the URL the guest streams from is the one the YAML declares.
+
 This is written against labgrid master, where on_activate() starts the QEMU
 process and opens the QMP monitor, leaving on() as nothing but "cont". In the
 26.0 release the process start lives in on() instead, which would mean binding
@@ -100,7 +107,9 @@ def bind(bridge):
     from pexpect import TIMEOUT
     from pyodide.ffi import to_js
 
-    from labgrid.driver import QEMUDriver
+    from labgrid.driver import HTTPProviderDriver, QEMUDriver
+    from labgrid.driver.common import Driver
+    from labgrid.step import step
     from labgrid.util.qmp import QMPMonitor
 
     def get_qemu_version(self, qemu_bin):
@@ -161,5 +170,19 @@ def bind(bridge):
 
     for name in BOUND_METHODS:
         setattr(QEMUDriver, name, locals()[name])
+
+    # HTTPProviderDriver.stage(): same signature, same @check_active/@step and
+    # the same return contract as stock (external URL + basename), but the file
+    # is served from the browser instead of rsync'd to a docroot. bytes go over
+    # to JS as a Uint8Array; the guest fetches them back through the proxy.
+    @Driver.check_active
+    @step(args=["filename"], result=True)
+    def stage(self, filename):
+        name = os.path.basename(filename)
+        with open(filename, "rb") as fh:
+            bridge.stageFile(name, to_js(fh.read()))
+        return self.provider.external.rstrip("/") + "/" + name
+
+    HTTPProviderDriver.stage = stage
 
     return QEMUDriver

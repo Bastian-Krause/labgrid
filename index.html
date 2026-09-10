@@ -205,8 +205,10 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
     <h2>How it works</h2>
     <ul>
       <li><a href="https://github.com/labgrid-project/labgrid">labgrid</a> is unmodified, installed
-        from a wheel built from upstream. Only five <code>QEMUDriver</code> methods are rebound, to
-        talk to this page instead of to a POSIX host.</li>
+        from a wheel built from upstream. Only a few methods are rebound, to talk to this page
+        instead of to a POSIX host: five on <code>QEMUDriver</code>, plus
+        <code>HTTPProviderDriver.stage()</code>, which serves the RAUC bundle to the guest over the
+        in-browser network stack instead of from an HTTP server.</li>
       <li><a href="https://pyodide.org/">Pyodide</a> is CPython compiled to WebAssembly. labgrid and
         pytest run there, in a worker, where they are allowed to block.</li>
       <li><a href="https://github.com/ktock/qemu-wasm">QEMU-WASM</a> is

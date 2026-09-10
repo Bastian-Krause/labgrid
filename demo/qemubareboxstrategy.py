@@ -22,6 +22,7 @@ class QEMUBareboxStrategy(Strategy):
         "qemu": "QEMUDriver",
         "barebox": "BareboxDriver",
         "shell": "ShellDriver",
+        "http": "HTTPProviderDriver",
     }
 
     status = attr.ib(default=Status.unknown)
@@ -40,6 +41,10 @@ class QEMUBareboxStrategy(Strategy):
             self.target.deactivate(self.barebox)
             self.target.deactivate(self.shell)
             self.target.activate(self.qemu)
+            # the file server the guest streams updates from is independent of
+            # the board's power, so bring it up here in the off state -- a staged
+            # URL is then ready before the guest is even on
+            self.target.activate(self.http)
             self.qemu.off()
         elif status == Status.barebox:
             self.transition(Status.off)
