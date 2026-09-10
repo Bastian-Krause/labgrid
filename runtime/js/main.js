@@ -312,9 +312,7 @@ async function startQemu(argv) {
     Module.preRun = Module.preRun || [];
     Module.preRun.push((mod) => { try { mod.FS.mkdir("/.wasmenv"); } catch (e) { /* exists */ } });
     if (NET) {
-      narrate("starting the in-browser network stack ...");
       await startBrowserNet(Module);
-      narrate("network stack ready");
     } else {
       Module.websocket = { url: "ws://127.0.0.1:9999/" };
     }

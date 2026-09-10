@@ -176,7 +176,7 @@ async function init(msg) {
   const wheelNames = (await (await fetch(wheels + "index.txt")).text()).trim().split("\n");
   await micropip.install.callKwargs(wheelNames.map((name) => wheels + name), { deps: false });
 
-  status("binding QEMUDriver");
+  status("starting QEMU and binding QEMUDriver");
   // grpc_stub.py lands as grpc.py: grpcio has no wasm build, and labgrid's
   // pytest plugin imports it by way of labgrid.remote. Nothing calls into it --
   // see the module's own comment.
