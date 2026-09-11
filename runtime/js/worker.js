@@ -59,11 +59,11 @@ const bridge = {
   },
 
   /**
-   * Stage `bytes` so the guest can download them at .../__staged__/<name> via
-   * the in-browser proxy. HTTPProviderDriver.stage() (labgrid_wasm.py) calls
-   * this; the main thread holds the bytes and msw serves them (see
-   * browsernet.js). A typed array, not Array.from(), because a bundle is large
-   * and slice() just hands postMessage a clean copy to clone.
+   * Stage `bytes` so the guest can download them from the stack's gateway host
+   * via the in-browser proxy. HTTPProviderDriver.stage() (labgrid_wasm.py) calls
+   * this; the main thread holds the bytes and serves them from the guest's
+   * fetch (see browsernet.js). A typed array, not Array.from(), because a bundle
+   * is large and slice() just hands postMessage a clean copy to clone.
    */
   stageFile(name, bytes) {
     post({ type: "stage-file", name, bytes: bytes.slice() });

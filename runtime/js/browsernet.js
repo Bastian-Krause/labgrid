@@ -20,9 +20,11 @@ const STACK_ADDR = "http://localhost:9999/"; // ktock's address; only the page s
 // labgrid's HTTPProvider stages a file into an HTTP docroot and hands back a
 // URL. Here the "docroot" is this in-memory store: HTTPProviderDriver.stage()
 // (faked in labgrid_wasm.py) posts the bytes here, and when the guest fetches
-// https://192.168.127.1/__staged__/<name> -- the stack's gateway IP, over the
-// in-browser proxy -- we answer from the store. Nothing leaves the browser, and
-// Range requests are honoured, which is what RAUC's streaming install needs.
+// https://192.168.127.1/<name> -- the stack's gateway IP, over the in-browser
+// proxy -- we answer from the store. Nothing else is served from that IP over
+// HTTP, so matching the host is enough and the path is just the file name, as a
+// real HTTP server would have it. Nothing leaves the browser, and Range requests
+// are honoured, which is what RAUC's streaming install needs.
 //
 // The interception is at the *fetch call site* in stack.js (our one patch),
 // not a service-worker handler: on GitHub Pages coi-serviceworker -- not msw --
@@ -30,30 +32,13 @@ const STACK_ADDR = "http://localhost:9999/"; // ktock's address; only the page s
 // handler would never fire there. Short-circuiting before fetch() works
 // whichever service worker is in charge. It all runs on the main thread, where
 // stack.js issues the guest's fetches, so a plain Map is all the state we need.
+const STAGE_HOST = "192.168.127.1"; // must match demo/env.yaml's HTTPProvider external
 const staged = new Map(); // basename -> Uint8Array
-const stagedWaiters = new Map(); // basename -> [resolve, ...]
 
-/** Record staged bytes. Called from main.js when the worker relays a stage(). */
+/** Record staged bytes. Called from main.js when the worker relays a stage().
+ * stage() always runs well before the guest fetches, so a plain set suffices. */
 export function stageBytes(name, bytes) {
-  const buf = bytes.slice ? bytes.slice() : new Uint8Array(bytes);
-  staged.set(name, buf);
-  const waiters = stagedWaiters.get(name);
-  if (waiters) {
-    stagedWaiters.delete(name);
-    waiters.forEach((resolve) => resolve(buf));
-  }
-}
-
-/** The staged bytes for a name, waiting if stage() has not landed yet -- so the
- * guest's fetch is answered deterministically however the two race. */
-function awaitStaged(name) {
-  const have = staged.get(name);
-  if (have) return Promise.resolve(have);
-  return new Promise((resolve) => {
-    const waiters = stagedWaiters.get(name) || [];
-    waiters.push(resolve);
-    stagedWaiters.set(name, waiters);
-  });
+  staged.set(name, bytes.slice ? bytes.slice() : new Uint8Array(bytes));
 }
 
 /** Case-insensitive lookup in stack.js's plain request-headers object. */
@@ -105,11 +90,14 @@ function stagedResponse(body, request) {
 }
 
 // Consulted by our stack.js patch before every guest fetch: a Promise<Response>
-// for a staged URL, or undefined so the normal network fetch runs.
+// for a file staged on the stack's gateway host, or undefined so the normal
+// network fetch runs (any other host, or a name we have not staged).
 globalThis.__labgridServeStaged = (url, request) => {
-  if (!/\/__staged__\//.test(url)) return undefined;
-  const name = decodeURIComponent(url.split("?")[0].split("/").pop());
-  return awaitStaged(name).then((body) => stagedResponse(body, request));
+  let u;
+  try { u = new URL(url); } catch { return undefined; }
+  if (u.hostname !== STAGE_HOST) return undefined;
+  const body = staged.get(decodeURIComponent(u.pathname.split("/").pop()));
+  return body ? Promise.resolve(stagedResponse(body, request)) : undefined;
 };
 
 function loadScript(src) {
