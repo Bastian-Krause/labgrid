@@ -1,37 +1,72 @@
 """A labgrid test suite. Nothing in here is browser-specific -- the same file
 runs against real hardware, given an env.yaml with the same drivers."""
 
+import datetime
+
 import pytest
 
-from labgrid.driver import QEMUDriver
 
-
-def test_target_has_a_qemu_driver(target):
-    assert isinstance(target.get_driver(QEMUDriver, activate=False), QEMUDriver)
-
-
-def test_barebox_reports_a_version(strategy):
+@pytest.fixture
+def barebox(strategy):
+    """The BareboxDriver, with the board driven to the barebox prompt."""
     strategy.transition("barebox")
-    assert "barebox" in "\n".join(strategy.barebox.run_check("version")).lower()
+    return strategy.barebox
 
 
-def test_linux_boots_to_a_shell(strategy):
+@pytest.fixture
+def shell(strategy):
+    """The ShellDriver, with the board booted to a networked Linux shell.
+
+    The strategy waits for eth0's DHCP lease on the way here, so a test that
+    gets this fixture already has connectivity -- no polling of its own.
+    """
     strategy.transition("shell")
-    # the guest's tty ends its lines with CRLF, and labgrid splits on the LF
-    assert [line.strip() for line in strategy.shell.run_check("uname -s")] == ["Linux"]
+    return strategy.shell
 
 
-def test_rauc_streams_a_bundle_over_https(env, target, strategy):
+def test_barebox_reports_a_version(barebox):
+    assert "barebox" in "\n".join(barebox.run_check("version")).lower()
+
+
+def test_barebox_environment_is_unmodified(barebox):
+    """The board boots with its factory barebox environment.
+
+    barebox layers saved non-volatile variables on top of the read-only default
+    environment compiled into the image; `nv` lists the ones in effect. On an
+    unmodified board that is exactly the shipped default set -- nothing has been
+    changed and `saveenv`'d over it.
+    """
+    nv = {line.split(":", 1)[0].strip() for line in barebox.run_check("nv") if ":" in line}
+    assert nv == {"allow_color", "autoboot_timeout", "boot.default", "user"}, nv
+
+
+def test_guest_clock_is_the_real_time(shell):
+    """The guest's RTC works: it reports the real current wall clock.
+
+    QEMU seeds the emulated RTC from the browser's clock (-rtc base=utc), which
+    two certificate checks depend on being current -- the RAUC bundle signature
+    and the in-browser proxy's freshly-minted MITM cert. Read the guest's time
+    and compare it to the host's now(). The window is wide on purpose: emulated
+    seconds tick slower than wall-clock ones, so the guest clock lags real time
+    by however long the boot took -- what matters is that it is the real date,
+    not 1970 or a pinned build time.
+    """
+    guest = int(shell.run_check("date -u +%s")[0])
+    host = datetime.datetime.now(datetime.timezone.utc).timestamp()
+    assert abs(host - guest) < 300, f"guest {guest} vs host {host:.0f}"
+
+
+def test_rauc_streams_a_bundle_over_https(env, strategy, shell):
     """Install a RAUC update by streaming it over HTTPS -- from inside the browser.
 
     The in-browser network stack gives the guest connectivity: it brings up eth0
-    over DHCP at boot (mini-yocto's inittab), and when the browser
-    proxy's MITM CA is present its /etc/profile.d snippet exports http(s)_proxy
-    at login -- so a bare `rauc install` streams the bundle, no manual proxy
-    prefix. The bundle is pulled over HTTP range requests (it never lands on disk
-    whole), verified, and written to the barebox bootloader slot -- so the banner
-    changes on the next boot. The same test runs unchanged against real hardware,
-    where the HTTP provider is a real server and the guest uses its real network.
+    over DHCP at boot (mini-yocto's inittab), and when the browser proxy's MITM CA
+    is present its /etc/profile.d snippet exports http(s)_proxy at login -- so a
+    bare `rauc install` streams the bundle, no manual proxy prefix. The bundle is
+    pulled over HTTP range requests (it never lands on disk whole), verified, and
+    written to the barebox bootloader slot. The same test runs unchanged against
+    real hardware, where the HTTP provider is a real server and the guest uses its
+    real network.
     """
     # Stage the bundle on the HTTP provider and learn the URL to stream it from.
     # This is labgrid's normal provider flow: stage() puts the file where the
@@ -42,24 +77,17 @@ def test_rauc_streams_a_bundle_over_https(env, target, strategy):
     bundle = env.config.get_image_path("rauc_bundle")
     url = strategy.http.stage(bundle)
 
-    # remember the running bootloader so we can prove the update took
-    strategy.transition("barebox")
-    before = "\n".join(strategy.barebox.run_check("version"))
-
-    # transition("shell") waited for the DHCP lease (the strategy makes a shell
-    # reached with networking on a *networked* shell), so the interface is up.
-    strategy.transition("shell")
-
-    # the update: streamed over HTTPS via the in-browser proxy, which the guest
-    # picked up from /etc/profile.d -- along with SSL_CERT_FILE pointing at the
-    # proxy's MITM CA, so the TLS handshake is *verified*, no https_proxy= prefix
-    # and no --tls-no-verify. (The guest runs real browser time, -rtc base=utc,
-    # which that freshly-minted MITM cert needs.)
-    out = strategy.shell.run_check(f"rauc install {url}", timeout=600)
+    # the shell fixture booted us to a networked shell; stream the update over
+    # HTTPS via the in-browser proxy, which the guest picked up from
+    # /etc/profile.d -- along with SSL_CERT_FILE pointing at the proxy's MITM CA,
+    # so the TLS handshake is *verified*, no https_proxy= prefix and no
+    # --tls-no-verify.
+    out = shell.run_check(f"rauc install {url}", timeout=600)
     assert any("succeeded" in line.lower() for line in out), "\n".join(out)
 
-    # the new bootloader is live only after a power cycle
+    # the new bootloader is live only after a power cycle; boot the updated
+    # barebox and read the buildsystem version it now reports
     strategy.transition("off")
     strategy.transition("barebox")
-    after = "\n".join(strategy.barebox.run_check("version"))
-    assert after != before, f"banner unchanged:\n{after}"
+    version = [line.strip() for line in strategy.barebox.run_check("echo $global.buildsystem.version")]
+    assert version == ["mini-yocto-1.0-update"], version
