@@ -11,7 +11,7 @@
 // Be clear about what that does and does not prove. It exercises labgrid's
 // login state machine, its marker protocol, pexpect's regex machinery, VT100
 // stripping, exit-code parsing, and every line of our bridge. It proves nothing
-// about QEMU-WASM -- not the argv, not the guest-file staging, not the poll
+// about QEMU-WASM -- not the argv, not the guest-file fetching, not the poll
 // patch. That is what m4 and m5 are for, and this does not replace them.
 //
 // One gap worth naming rather than glossing: this guest's recorded boot log is

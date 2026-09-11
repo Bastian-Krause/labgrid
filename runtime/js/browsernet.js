@@ -111,7 +111,7 @@ function loadScript(src) {
 }
 
 /**
- * Start the stack and resolve once its MITM CA has been staged into Module's
+ * Start the stack and resolve once its MITM CA has been written into Module's
  * filesystem at /.wasmenv/proxy.crt (mounted into the guest as wasm0). Must be
  * called before the QEMU module is initialised.
  */

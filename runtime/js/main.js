@@ -9,7 +9,7 @@
 
 import { createRing, createNote, RingWriter, setNote, RUNNING, STOPPED } from "./ringbuffer.js";
 import { createQmpChannel } from "./qmpchannel.js";
-import { fetchGuestManifest, stageGuestFiles } from "./guestfs.js";
+import { fetchGuestManifest, fetchGuestFiles } from "./guestfs.js";
 import { initEditors } from "./editor.js";
 import { createFakeQmp, startFakeConsole } from "./fakeguest.js";
 import { startBrowserNet, stageBytes } from "./browsernet.js";
@@ -185,7 +185,7 @@ async function prepareGuest() {
   }
   const manifest = await fetchGuestManifest(QEMU_BASE);
   guest.mode = "manifest";
-  guest.files = await stageGuestFiles(Module, QEMU_BASE, manifest, (path, got, total) => {
+  guest.files = await fetchGuestFiles(Module, QEMU_BASE, manifest, (path, got, total) => {
     guest.progress = { path, got, total };
   });
   guest.progress = null;
@@ -289,7 +289,7 @@ async function startQemu(argv) {
     if (!guest.done) {
       narrate("fetching the guest images ...");
       await guestReady;
-      narrate("guest images staged");
+      narrate("guest images ready");
     } else {
       await guestReady;
     }
@@ -297,7 +297,7 @@ async function startQemu(argv) {
 
     // The guest's socket netdev rides emscripten's WebSocket, which ktock's
     // in-browser stack (stack.js + c2w-net-proxy) catches to give eth0 real
-    // connectivity; its MITM CA is staged for the wasm0 mount before QEMU starts.
+    // connectivity; its MITM CA is placed on the wasm0 mount before QEMU starts.
     // env.yaml always exposes /.wasmenv over 9p (wasm0), so the directory has to
     // exist before QEMU starts or the fsdev backend fails to open; startBrowserNet
     // then drops the proxy CA into it.

@@ -86,7 +86,7 @@ function waitForState(timeoutMs) {
   }
 }
 
-// --- staging the user's own files -------------------------------------------
+// --- fetching the user's own files into pyodide's filesystem ----------------
 
 // Where the environment config and everything it refers to live in Pyodide's
 // filesystem. It has to be a real path, not a notional one: labgrid resolves
@@ -95,7 +95,7 @@ function waitForState(timeoutMs) {
 // SourceFileLoader), so the demo/ directory on the server is mirrored here.
 const DEMO_DIR = "/demo";
 
-async function stageDemoFile(base, name) {
+async function fetchDemoFile(base, name) {
   const res = await fetch(base + name);
   if (!res.ok) throw new Error(`demo/${name}: HTTP ${res.status}`);
   const path = DEMO_DIR + "/" + name;
@@ -113,7 +113,7 @@ async function stageDemoFile(base, name) {
  * parsing (it knows about !template and about resolving relative paths), so
  * this stays a lookup rather than a second, subtly different implementation.
  */
-async function stageEnvImports(base) {
+async function fetchEnvImports(base) {
   const paths = JSON.parse(
     await pyodide.runPythonAsync(`
 import json
@@ -126,12 +126,11 @@ json.dumps([p for p in Config("${DEMO_DIR}/env.yaml").get_imports() if p.endswit
       // Anything outside demo/ has no URL to be fetched from. Non-.py entries
       // are plain module names and were filtered out above, so this is a path
       // that escaped the config directory -- let labgrid report it itself.
-      post({ type: "stderr", line: `imports: ${path} is outside ${DEMO_DIR}/, not staged` });
+      post({ type: "stderr", line: `imports: ${path} is outside ${DEMO_DIR}/, not fetched` });
       continue;
     }
     const name = path.slice(DEMO_DIR.length + 1);
-    status("staging " + name);
-    await stageDemoFile(base, name);
+    await fetchDemoFile(base, name);
   }
   return paths;
 }
@@ -179,7 +178,7 @@ async function init(msg) {
   // work, having nothing to bind to.) Nothing in the import closure of
   // `import labgrid` reaches any of them -- grpcio is only used by
   // labgrid.remote, which labgrid's pytest plugin does import, and which the
-  // grpc stub staged below covers.
+  // grpc stub placed below covers.
   //
   // callKwargs, not a trailing object: a plain object would bind to micropip's
   // next positional parameter (keep_going) and deps would silently stay True.
@@ -207,7 +206,7 @@ async function init(msg) {
     pyodide.FS.writeFile("/lib/python3.14/site-packages/shims/" + name, src);
   }
 
-  // stage the demo's environment and script where labgrid expects them
+  // fetch the demo's environment and script where labgrid expects them
   const demo = new URL("../../demo/", import.meta.url).href;
   pyodide.FS.mkdirTree(DEMO_DIR);
   // conftest.py, pytest.ini and test_demo.py are the pytest half of the demo;
@@ -216,7 +215,7 @@ async function init(msg) {
   // pytest.main() at the prompt discovers it from the rootdir.
   for (const name of ["env.yaml", "demo.py", "conftest.py", "pytest.ini",
                       "test_demo.py"]) {
-    await stageDemoFile(demo, name);
+    await fetchDemoFile(demo, name);
   }
 
   // The RAUC bundle the streaming test installs. Binary, and it lives with the
@@ -225,7 +224,6 @@ async function init(msg) {
   // resolves to, which is the file HTTPProviderDriver.stage() reads and streams
   // back to the guest over the in-browser proxy.
   if (msg.raucBundleUrl) {
-    status("staging rauc bundle");
     const res = await fetch(msg.raucBundleUrl);
     if (!res.ok) throw new Error(`rauc bundle: HTTP ${res.status}`);
     pyodide.FS.mkdirTree(DEMO_DIR + "/images/rauc");
@@ -244,7 +242,7 @@ labgrid_wasm.bind(labgridBridge)
 # of it. Two things stand between that plugin and a browser, and both are about
 # the platform rather than about labgrid:
 #
-#   grpc, imported at module level by labgrid.remote and staged above as a stub
+#   grpc, imported at module level by labgrid.remote and placed above as a stub
 #   that satisfies the import and nothing else, and
 #
 #   subprocess, which emscripten cannot do at all. The env fixture shells out to
@@ -276,7 +274,7 @@ os.chdir("/demo")
 import pytest
 `);
 
-  await stageEnvImports(demo);
+  await fetchEnvImports(demo);
 
   // The REPL is pyodide's PyodideConsole -- Python's own
   // code.InteractiveConsole underneath -- so it behaves like the real thing:

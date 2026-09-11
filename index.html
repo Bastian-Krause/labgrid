@@ -248,7 +248,7 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
      them relative to their own URL, so a relative path silently doubles the
      directory and every worker dies fetching it. Module.arguments is filled in
      later, from labgrid's own get_qemu_base_args(), and the guest files are
-     staged by runtime/js/guestfs.js from the image's guest.json manifest. -->
+     fetched by runtime/js/guestfs.js from the image's guest.json manifest. -->
 <script>
   // The one QEMU build, carrying the four upstream fixes (see build_qemu_wasm/).
   // ?qemuimg=<name> selects a different directory under qemu/.

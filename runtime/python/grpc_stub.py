@@ -1,4 +1,4 @@
-"""Stand-in for grpcio, staged into pyodide's site-packages as `grpc`.
+"""Stand-in for grpcio, placed into pyodide's site-packages as `grpc`.
 
 grpcio is a C extension with no Emscripten build, and labgrid imports it at
 module level in labgrid/remote/{client,common}.py and in the generated

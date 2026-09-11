@@ -89,15 +89,15 @@ async function download(url, onProgress, gunzip = false) {
 
 /**
  * Fetch every file in the manifest and arrange for it to appear in QEMU's
- * filesystem. Returns what was staged, as [{path, url, size}].
+ * filesystem. Returns what was fetched, as [{path, url, size}].
  *
  * The download happens now; the filesystem work is queued on Module.preRun,
  * because FS does not exist until the runtime starts and the files have to be
  * there the moment QEMU's main() looks for them. Call before the module is
  * initialized.
  */
-export async function stageGuestFiles(Module, base, manifest, onProgress = null) {
-  const staged = [];
+export async function fetchGuestFiles(Module, base, manifest, onProgress = null) {
+  const fetched = [];
   for (const entry of manifest.files) {
     const { path } = entry;
     if (typeof path !== "string" || !path.startsWith("/")) {
@@ -107,12 +107,12 @@ export async function stageGuestFiles(Module, base, manifest, onProgress = null)
     const url = new URL(entry.url || name, base).href;
     const gunzip = url.endsWith(".gz") && !path.endsWith(".gz");
     const data = await download(url, (got, total) => onProgress && onProgress(path, got, total), gunzip);
-    staged.push({ path, url, size: data.length, data });
+    fetched.push({ path, url, size: data.length, data });
   }
 
   Module.preRun = Module.preRun || [];
   Module.preRun.push(() => {
-    for (const file of staged) {
+    for (const file of fetched) {
       const slash = file.path.lastIndexOf("/");
       const dir = file.path.slice(0, slash) || "/";
       const name = file.path.slice(slash + 1);
@@ -123,5 +123,5 @@ export async function stageGuestFiles(Module, base, manifest, onProgress = null)
     }
   });
 
-  return staged.map(({ path, url, size }) => ({ path, url, size }));
+  return fetched.map(({ path, url, size }) => ({ path, url, size }));
 }
