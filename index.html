@@ -141,13 +141,12 @@
 </head>
 <body>
 <h1>labgrid Web Demo</h1>
-<p class="sub">A QEMU terminal and a Python prompt, prepared for driving the emulated board with
-labgrid's <a href="https://labgrid.readthedocs.io/en/latest/configuration.html#qemudriver">QEMUDriver</a>,
-<a href="https://labgrid.readthedocs.io/en/latest/configuration.html#bareboxdriver">BareboxDriver</a> and
-<a href="https://labgrid.readthedocs.io/en/latest/configuration.html#shelldriver">ShellDriver</a>.
-Left: the guest's serial console &mdash; type into it while labgrid is working. Right: the prompt, in
-labgrid's own namespace, where the demo script has already left you a
-<code>target</code> and a <code>strategy</code>.</p>
+<p class="sub">Evaluate labgrid without real hardware. This playground has everything wired up
+already: a handful of labgrid's drivers, a strategy (see the <code>qemubareboxstrategy.py</code> tab)
+and an environment configuration (see the <code>env.yaml</code> tab) that ties them together, driving
+an emulated barebox/Linux target. It drops you in an interactive Python prompt beside the target's
+serial console. There's also a small, editable test suite (see the <code>test_demo.py</code> tab).
+See below for some things to try.</p>
 <div id="panes">
   <div id="console-pane">
     <div class="pane-title">serial console</div>
