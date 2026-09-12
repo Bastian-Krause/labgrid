@@ -207,17 +207,32 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
       <li><a href="https://github.com/labgrid-project/labgrid">labgrid</a> is unmodified, installed
         from a wheel built from upstream. Only a few methods are rebound, to talk to this page
         instead of to a POSIX host: five on <code>QEMUDriver</code>, plus
-        <code>HTTPProviderDriver.stage()</code>, which serves the RAUC bundle to the guest over the
+        <code>HTTPProviderDriver.stage()</code>, which serves the
+        <a href="https://rauc.io/">RAUC</a> bundle to the guest over the
         in-browser network stack instead of from an HTTP server.</li>
       <li><a href="https://pyodide.org/">Pyodide</a> is CPython compiled to WebAssembly. labgrid and
-        pytest run there, in a worker, where they are allowed to block.</li>
+        <a href="https://pytest.org/">pytest</a> run there, in a worker, where they are allowed to
+        block.</li>
       <li><a href="https://github.com/ktock/qemu-wasm">QEMU-WASM</a> is
         <a href="https://www.qemu.org/">QEMU</a> built with
         <a href="https://emscripten.org/">Emscripten</a>; it boots
-        <a href="https://www.barebox.org/">barebox</a> and Linux from the guest images, in this tab.</li>
+        <a href="https://www.barebox.org/">barebox</a> and a
+        <a href="https://kernel.org/">Linux</a> kernel with a
+        <a href="https://www.busybox.net/">BusyBox</a> userspace from the guest images, in this tab.</li>
+      <li>The guest's network is emulated in the browser too:
+        <a href="https://mswjs.io/">Mock Service Worker</a> catches its virtio-net WebSocket and
+        bridges it, over SharedArrayBuffers, to
+        <a href="https://github.com/container2wasm/container2wasm">container2wasm</a>'s
+        <code>c2w-net-proxy</code> &mdash; a
+        <a href="https://github.com/containers/gvisor-tap-vsock">gvisor-tap-vsock</a> TCP/IP stack
+        (WASI) that does the guest's HTTP(S) through the browser's Fetch API and MITMs TLS with its
+        own CA. The bridge itself is ktock's, from the same qemu-wasm project.</li>
       <li><a href="https://xtermjs.org/">xterm.js</a> and
         <a href="https://github.com/mame/xterm-pty">xterm-pty</a> are the terminal. The bridge taps the
         pty master &mdash; where a human sits, and labgrid is just a second human.</li>
+      <li><a href="https://github.com/gzuidhof/coi-serviceworker">coi-serviceworker</a> sets the
+        COOP/COEP headers client-side, so the SharedArrayBuffer the console bridge and QEMU-WASM's
+        threads depend on works on a plain static host like GitHub Pages.</li>
       <li><a href="https://github.com/kazzkiq/CodeFlask">CodeFlask</a> and
         <a href="https://prismjs.com/">Prism</a> are the editor tabs.</li>
     </ul>
