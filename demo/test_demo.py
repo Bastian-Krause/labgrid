@@ -1,7 +1,6 @@
 """An example labgrid test suite."""
 
 import datetime
-import re
 
 import pytest
 
@@ -26,8 +25,8 @@ def test_barebox_dhcp(barebox):
 
 
 def test_barebox_dmesg_has_no_warnings(barebox):
-    """barebox logs nothing at error or warning level."""
-    assert [line for line in barebox.run_check("dmesg -l err,warn") if line.strip()] == []
+    """barebox logs nothing at warning level or above."""
+    assert barebox.run_check("dmesg -p warn") == []
 
 
 def test_guest_clock_is_the_real_time(shell):
@@ -39,27 +38,24 @@ def test_guest_clock_is_the_real_time(shell):
 
 
 def test_linux_dmesg_has_no_unexpected_warnings(shell):
-    """No kernel messages at error/warning level beyond a few benign ones.
+    """No kernel messages at warning level or above beyond a few benign ones.
 
-    BusyBox' dmesg has no level filter, so read the raw ring buffer -- dmesg -r
-    prefixes each line with its <priority> -- and keep warning-and-worse (levels
-    0-4). The emulated QEMU virt board logs a handful of unavoidable benign
-    ones, matched as patterns (the hrtimer figure depends on how slow the
-    emulation is); anything outside that allowlist is a real regression.
+    --level=warn+ is util-linux dmesg's "warning and higher" threshold, the same
+    set barebox' `dmesg -p warn` reports. The emulated QEMU virt board logs a
+    handful of unavoidable benign ones (the hrtimer figure varies with emulation
+    speed, so match on its prefix); anything else is a real regression.
     """
-    allowed = [
-        r"/cpus/cpu@0 missing clock-frequency property",
-        r"cacheinfo: Unable to detect cache hierarchy for CPU 0",
-        r"check access for rdinit=/init failed: -2, ignoring",
-        r"hrtimer: interrupt took \d+ ns",
-    ]
-    warnings = [
-        line.split(">", 1)[1].strip()
-        for line in shell.run_check("dmesg -r")
-        if line[:1] == "<" and line[1:2] in "01234" and line[2:3] == ">"
-    ]
-    unexpected = [w for w in warnings if not any(re.fullmatch(p, w) for p in allowed)]
-    assert not unexpected, unexpected
+    allowed = (
+        "/cpus/cpu@0 missing clock-frequency property",
+        "cacheinfo: Unable to detect cache hierarchy for CPU 0",
+        "check access for rdinit=/init failed",
+        "hrtimer: interrupt took",
+    )
+    warnings = shell.run_check("dmesg --level=warn+ --notime")
+    for line in list(warnings):
+        if line.startswith(allowed):
+            warnings.remove(line)
+    assert warnings == []
 
 
 def test_rauc_streams_a_bundle_over_https(env, strategy, shell):
