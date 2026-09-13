@@ -414,7 +414,7 @@ window.__run = runPython;
 // --- the REPL pane ----------------------------------------------------------
 // A real Python REPL beside the serial console: pyodide's PyodideConsole
 // (Python's code.InteractiveConsole) running in the same worker namespace the
-// demo script runs in -- what demo.py defines, the human can poke at. This
+// demo script runs in -- what prompt_startup.py defines, the human can poke at. This
 // side only renders: prompts (timestamped, like a shell prompt command),
 // "..." continuation, streamed output, tab completion. Execution is real and
 // synchronous in the worker; while a transition() blocks, labgrid's step log
@@ -561,12 +561,12 @@ replIn?.addEventListener("keydown", (ev) => {
   }
 });
 
-// Run demo.py through the REPL, line by line, exactly as if a person had
-// typed it -- comments and all. Nothing is skipped or pre-warmed: the
+// Run prompt_startup.py through the REPL, line by line, exactly as if a person
+// had typed it -- comments and all. Nothing is skipped or pre-warmed: the
 // timestamps in the pane are the honest cost of every step.
 async function runDemo() {
-  setStatus("running demo.py");
-  const src = await runPython(`open("/demo/demo.py").read()`);
+  setStatus("running prompt_startup.py");
+  const src = await runPython(`open("/demo/prompt_startup.py").read()`);
   if (!src.ok) {
     state.results.demo = src;
     setStatus("demo failed: " + src.error);

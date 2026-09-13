@@ -213,7 +213,7 @@ async function init(msg) {
   // see the PYTEST_DISABLE_PLUGIN_AUTOLOAD note below. The suite is a single
   // file next to the config (no tests/ subdir, no testpaths), so a bare
   // pytest.main() at the prompt discovers it from the rootdir.
-  for (const name of ["env.yaml", "demo.py", "conftest.py", "pytest.ini",
+  for (const name of ["env.yaml", "prompt_startup.py", "conftest.py", "pytest.ini",
                       "test_demo.py"]) {
     await fetchDemoFile(demo, name);
   }
@@ -280,8 +280,8 @@ import pytest
   // code.InteractiveConsole underneath -- so it behaves like the real thing:
   // line-by-line input with "..." continuation, reprs from the displayhook,
   // real tracebacks, tab completion, even top-level await. It runs in
-  // __main__'s namespace, the same one "run" messages use, so what demo.py
-  // defines the human can use. Its stdout/stderr are captured per-push and
+  // __main__'s namespace, the same one "run" messages use, so what
+  // prompt_startup.py defines the human can use. Its stdout/stderr are captured per-push and
   // stream to the page as chunks, which keeps output live while a blocking
   // call (a transition, say) is still running.
   globalThis.__replStdout = (text) => post({ type: "repl-stream", stream: "stdout", text });
