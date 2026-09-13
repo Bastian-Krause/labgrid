@@ -12,6 +12,11 @@
   h1 { font-size: 1.1rem; font-weight: 600; margin: 0 0 .25rem; }
   p.sub { margin: 0 0 1rem; color: #999; max-width: 70ch; }
   p.sub a { color: #9cf; }
+  a.fn { text-decoration: none; }
+  a.fn sup { font-size: .7em; padding-left: 1px; }
+  ol.footnotes { margin: 2rem 0 0; padding: 1rem 0 0 1.4rem; max-width: 70ch;
+                 border-top: 1px solid #333; color: #777; font-size: 12px; line-height: 1.5; }
+  ol.footnotes li { margin: .2rem 0; }
   #panes { display: flex; gap: 1rem; align-items: stretch; flex-wrap: wrap; }
   .pane-title { font-family: ui-monospace, monospace; font-size: 11px; color: #888;
                 text-transform: uppercase; letter-spacing: .08em; margin-bottom: .3rem; }
@@ -142,14 +147,14 @@
 <body>
 <h1>labgrid Web Demo</h1>
 <p class="sub">Evaluate labgrid without real hardware. This playground has everything wired up
-already: a handful of labgrid's drivers, a strategy (see the <code>qemubareboxstrategy.py</code> tab)
-and an environment configuration (see the <code>env.yaml</code> tab) that ties them together, driving
-an emulated barebox/Linux target. It drops you in an interactive Python prompt beside the target's
-serial console. There's also a small, editable test suite (see the <code>test_demo.py</code> tab).
+already: a handful of labgrid's drivers<a class="fn" href="#fn1"><sup>1</sup></a>, a strategy<a class="fn" href="#fn2"><sup>2</sup></a>
+and an environment configuration<a class="fn" href="#fn3"><sup>3</sup></a> that ties them together, driving
+an emulated barebox/Linux target<a class="fn" href="#fn4"><sup>4</sup></a>. It drops you in an interactive Python prompt beside the target's
+serial console. There's also a small, editable test suite<a class="fn" href="#fn5"><sup>5</sup></a>.
 See below for some things to try.</p>
 <div id="panes">
   <div id="console-pane">
-    <div class="pane-title">serial console</div>
+    <div class="pane-title">QEMU serial console</div>
     <div id="terminal"></div>
   </div>
   <div id="repl-pane">
@@ -237,6 +242,16 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
     </ul>
   </section>
 </div>
+
+<ol class="footnotes">
+  <li id="fn1">The drivers are lightly patched so they drive the in-browser QEMU-WASM
+  instead of a real QEMU process; otherwise this is stock labgrid.</li>
+  <li id="fn2">See the <code>qemubareboxstrategy.py</code> tab.</li>
+  <li id="fn3">See the <code>env.yaml</code> tab.</li>
+  <li id="fn4">A minimal BusyBox-init image (no systemd) so it boots in seconds in the browser;
+  its networking runs through a user-space TCP/IP stack in the page, not the host's.</li>
+  <li id="fn5">The suite's pytest fixtures are patched the same way; see the <code>test_demo.py</code> tab.</li>
+</ol>
 
 <!-- Cross-origin isolation. Required: SharedArrayBuffer is needed both by
      QEMU-WASM's pthreads and by the console bridge. This service worker sets
