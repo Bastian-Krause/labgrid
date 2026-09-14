@@ -170,7 +170,7 @@ let qmp = null;
 
 // The guest files are independent of anything labgrid decides, so fetching them
 // does not have to wait for Pyodide to finish booting. Started here, awaited in
-// startQemu(); on a cold cache that overlaps a ~27 MB download with a ~15 s
+// startQemu(); on a cold cache that overlaps a ~9 MB download with a ~4 s
 // Python startup instead of running them back to back.
 const guest = { mode: null, done: false, files: [], progress: null };
 state.guest = guest;
@@ -178,7 +178,7 @@ state.guest = guest;
 async function prepareGuest() {
   if (REPLAY) {
     // Nothing to fetch: there is no QEMU to feed. This is most of why the
-    // replay tier is fast -- it skips a 27 MB download and a 66 MB wasm.
+    // replay tier is fast -- it skips a 9 MB download and a 66 MB wasm.
     guest.mode = "replay";
     guest.done = true;
     return;
@@ -194,6 +194,37 @@ async function prepareGuest() {
 
 const guestReady = prepareGuest();
 guestReady.catch(() => {}); // the real handling is in startQemu; this just avoids an unhandled rejection
+
+// The same for QEMU's own side, everything that does not depend on labgrid's
+// command line: the in-browser network stack (stack.js, its worker with the
+// c2w wasm, the MITM CA -- see browsernet.js), the Emscripten loader (out.js)
+// and the compiled QEMU module, 22 MB on the wire and a compile that, from a
+// warm cache, was most of what "starting QEMU-WASM" cost. Kicked off when the
+// worker reports its downloads done -- after the wheels, not after Pyodide
+// alone: started that early, QEMU's 27 MB starved the wheels on a shared
+// 50 Mbit/s link and pushed "labgrid ready" from 5.8 to 10.4 s (measured).
+// From here the Python side has ~1.5 s of CPU left before "ready", which on a
+// warm load covers the stack's start and the module's compile from cache.
+// The machine itself is still built at activation: the command line is
+// labgrid's, from the stock QEMUDriver and env.yaml, and exists only then.
+let qemuPrep = null;
+
+function prepareQemu() {
+  if (qemuPrep) return qemuPrep;
+  qemuPrep = (async () => {
+    const [, loader, module] = await Promise.all([
+      startBrowserNet(Module),
+      import(QEMU_BASE + "out.js"),
+      // needs application/wasm from the server, as Emscripten's own streaming
+      // path does; if that fails Emscripten falls back to fetching it itself
+      WebAssembly.compileStreaming(fetch(QEMU_BASE + "qemu-system-aarch64.wasm", { credentials: "same-origin" }))
+        .catch((e) => { console.warn("QEMU-WASM precompile failed, leaving it to Emscripten:", e); return null; }),
+    ]);
+    return { init: loader.default, module };
+  })();
+  qemuPrep.catch(() => {}); // surfaced by startQemu, which awaits it
+  return qemuPrep;
+}
 
 /**
  * The replay tier's stand-in for startQemu(): same contract, no QEMU. labgrid
@@ -295,18 +326,25 @@ async function startQemu(argv) {
     }
     setStatus("starting QEMU-WASM");
 
-    // The guest's socket netdev rides emscripten's WebSocket, which ktock's
-    // in-browser stack (stack.js + c2w-net-proxy) catches to give eth0 real
-    // connectivity; its MITM CA is placed on the wasm0 mount before QEMU starts.
     // env.yaml always exposes /.wasmenv over 9p (wasm0), so the directory has to
-    // exist before QEMU starts or the fsdev backend fails to open; startBrowserNet
-    // then drops the proxy CA into it.
+    // exist before QEMU starts or the fsdev backend fails to open; the network
+    // stack drops the proxy CA into it (browsernet.js).
     Module.preRun = Module.preRun || [];
     Module.preRun.push((mod) => { try { mod.FS.mkdir("/.wasmenv"); } catch (e) { /* exists */ } });
-    await startBrowserNet(Module);
+    // The stack, the loader and the compiled module were prepared while Pyodide
+    // booted (prepareQemu); on a warm load this resolves at once. Without a
+    // precompiled module, Emscripten fetches and compiles it itself.
+    const prep = await prepareQemu();
     Module.arguments = argv;
-    const initEmscriptenModule = (await import(QEMU_BASE + "out.js")).default;
-    await initEmscriptenModule(Module);
+    if (prep.module) {
+      Module.instantiateWasm = (imports, receive) => {
+        WebAssembly.instantiate(prep.module, imports)
+          .then((instance) => receive(instance, prep.module))
+          .catch((e) => died("QEMU-WASM failed: " + e));
+        return {};
+      };
+    }
+    await prep.init(Module);
 
     // Upstream's TTY poll fix: Emscripten's TTY poll has to consult the browser
     // pty's readiness, or a blocking read never wakes. Kept verbatim, plus a
@@ -349,6 +387,10 @@ worker.onmessage = (event) => {
   switch (msg.type) {
     case "status":
       narrate(msg.text);
+      break;
+    case "downloads-done":
+      // the Python side's downloads are in; QEMU's start behind them (prepareQemu)
+      if (!REPLAY) prepareQemu();
       break;
     case "ready":
       state.ready = true;

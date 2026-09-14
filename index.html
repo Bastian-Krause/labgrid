@@ -193,7 +193,8 @@ from labgrid.logging import basicConfig, StepLogger
 basicConfig(level=logging.INFO)
 StepLogger.start()</code></pre>
     <p>The bundled suite, through labgrid's own pytest plugin:</p>
-<pre><code>pytest.main()
+<pre><code>import pytest
+pytest.main()
 pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></code></pre>
     <p>Edit <code>test_demo.py</code> or <code>pytest.ini</code> in their tabs and run it
     again &mdash; leaving the tab is what saves. Edits last for the session only.</p>

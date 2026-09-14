@@ -12,6 +12,13 @@ let reader = null;
 let qmpReader = null;
 let note = null;
 let ctl = null;
+// A private namespace for the platform plumbing (the bridge bind, the
+// subprocess guard, the REPL console object). It is deliberately NOT __main__:
+// the REPL runs in __main__, and everything a name there resolves to should be
+// something the human -- or the prompt_startup.py the page echoes line by line
+// -- visibly imported. The plumbing's process-global effects still apply; only
+// its names stay out of the prompt's reach.
+let boot = null;
 
 const post = (msg) => self.postMessage(msg);
 const status = (text) => post({ type: "status", text });
@@ -119,7 +126,7 @@ async function fetchEnvImports(base) {
 import json
 from labgrid.config import Config
 json.dumps([p for p in Config("${DEMO_DIR}/env.yaml").get_imports() if p.endswith(".py")])
-`),
+`, { globals: boot }),
   );
   for (const path of paths) {
     if (!path.startsWith(DEMO_DIR + "/")) {
@@ -150,7 +157,6 @@ async function init(msg) {
     stdout: (line) => post({ type: "stdout", line }),
     stderr: (line) => post({ type: "stderr", line }),
   });
-
   status("loading packages");
   // Resolved through pyodide's own lock, so they come from vendor/pyodide/ next
   // to it rather than through micropip. micropip has to arrive this way -- it is
@@ -163,30 +169,11 @@ async function init(msg) {
     ["micropip", "attrs", "pyyaml", "protobuf", "exceptiongroup"]);
   const micropip = pyodide.pyimport("micropip");
 
-  status("installing labgrid and pytest");
-  // labgrid with its whole dependency closure, plus pytest for the human at
-  // the REPL, all from this tree. setup.sh let pip resolve the closures and
-  // listed them in index.txt (names, not versions: the labgrid wheel's carries
-  // whatever setuptools_scm derived from the pinned commit). The page
-  // therefore fetches nothing from anywhere but its own host.
+  // Stage everything else the Python side fetches now, before the wheels, so
+  // that once the wheels are in nothing but CPU stands between here and
+  // "ready" -- the page starts QEMU's 27 MB of downloads at that point, and a
+  // small fetch issued behind them on a shared slow link waits seconds.
   //
-  // deps=False because the list is already complete, and because resolution
-  // could not succeed anyway: labgrid declares fourteen hard requirements, one
-  // of them grpcio, which publishes no pure-python wheel and has no Emscripten
-  // build. (pyudev and pyusb are often blamed for this and are innocent: both
-  // ship py3-none-any wheels and would install fine. They would simply never
-  // work, having nothing to bind to.) Nothing in the import closure of
-  // `import labgrid` reaches any of them -- grpcio is only used by
-  // labgrid.remote, which labgrid's pytest plugin does import, and which the
-  // grpc stub placed below covers.
-  //
-  // callKwargs, not a trailing object: a plain object would bind to micropip's
-  // next positional parameter (keep_going) and deps would silently stay True.
-  const wheels = new URL("../../vendor/wheels/", import.meta.url).href;
-  const wheelNames = (await (await fetch(wheels + "index.txt")).text()).trim().split("\n");
-  await micropip.install.callKwargs(wheelNames.map((name) => wheels + name), { deps: false });
-
-  status("starting QEMU and binding QEMUDriver");
   // grpc_stub.py lands as grpc.py: grpcio has no wasm build, and labgrid's
   // pytest plugin imports it by way of labgrid.remote. Nothing calls into it --
   // see the module's own comment.
@@ -231,16 +218,49 @@ async function init(msg) {
                          new Uint8Array(await res.arrayBuffer()));
   }
 
+  status("installing labgrid and pytest");
+  // labgrid with its whole dependency closure, plus pytest for the human at
+  // the REPL, all from this tree. setup.sh let pip resolve the closures and
+  // listed them in index.txt (names, not versions: the labgrid wheel's carries
+  // whatever setuptools_scm derived from the pinned commit). The page
+  // therefore fetches nothing from anywhere but its own host.
+  //
+  // deps=False because the list is already complete, and because resolution
+  // could not succeed anyway: labgrid declares fourteen hard requirements, one
+  // of them grpcio, which publishes no pure-python wheel and has no Emscripten
+  // build. (pyudev and pyusb are often blamed for this and are innocent: both
+  // ship py3-none-any wheels and would install fine. They would simply never
+  // work, having nothing to bind to.) Nothing in the import closure of
+  // `import labgrid` reaches any of them -- grpcio is only used by
+  // labgrid.remote, which labgrid's pytest plugin does import, and which the
+  // grpc stub placed below covers.
+  //
+  // callKwargs, not a trailing object: a plain object would bind to micropip's
+  // next positional parameter (keep_going) and deps would silently stay True.
+  const wheels = new URL("../../vendor/wheels/", import.meta.url).href;
+  const wheelNames = (await (await fetch(wheels + "index.txt")).text()).trim().split("\n");
+  await micropip.install.callKwargs(wheelNames.map((name) => wheels + name), { deps: false });
+  // Everything the Python side downloads is in (interpreter, stdlib, packages,
+  // wheels); what is left before "ready" is CPU and a few KB of demo files. The
+  // page starts QEMU's own downloads here, behind them rather than alongside:
+  // on a shared slow link the 27 MB of QEMU and network stack would otherwise
+  // starve the wheels and push "ready" out by seconds (main.js, prepareQemu).
+  post({ type: "downloads-done" });
+
+  status("starting QEMU and binding QEMUDriver");
   globalThis.labgridBridge = bridge;
+  // All of this runs in the private `boot` namespace, not __main__: its names
+  // (labgrid_wasm, os, subprocess, sys) must not appear at the prompt, where
+  // only what the human imported should. Its effects are process-global, so the
+  // bind, the Popen guard, sys.executable and the chdir all take hold anyway.
+  boot = pyodide.toPy({});
   await pyodide.runPythonAsync(`
 import labgrid_wasm
 from js import labgridBridge
 labgrid_wasm.bind(labgridBridge)
 
-# pytest is vendored so the demo can run a real labgrid suite from the prompt,
-# with labgrid's own [pytest11] plugin -- fixtures, markers, the -v levels, all
-# of it. Two things stand between that plugin and a browser, and both are about
-# the platform rather than about labgrid:
+# Two platform quirks stand between labgrid's pytest plugin and a browser, both
+# about emscripten rather than about labgrid:
 #
 #   grpc, imported at module level by labgrid.remote and placed above as a stub
 #   that satisfies the import and nothing else, and
@@ -267,12 +287,13 @@ subprocess.Popen = _no_subprocesses
 import sys
 sys.executable = "pyodide"
 
-# Run from the config's own directory, the way a checkout is worked in, so
-# pytest.ini is found and its --lg-env resolves; pytest.main() alone is then
-# the whole invocation at the prompt.
+# Run from the config's own directory, the way a checkout is worked in, so that
+# pytest.ini is found and its --lg-env resolves when the human runs
+# pytest.main() at the prompt. pytest itself is not imported here: it is not
+# needed until then, and a name usable at the prompt should be one the human
+# imported (as the page's examples show: import pytest, then pytest.main()).
 os.chdir("/demo")
-import pytest
-`);
+`, { globals: boot });
 
   await fetchEnvImports(demo);
 
@@ -286,6 +307,9 @@ import pytest
   // call (a transition, say) is still running.
   globalThis.__replStdout = (text) => post({ type: "repl-stream", stream: "stdout", text });
   globalThis.__replStderr = (text) => post({ type: "repl-stream", stream: "stderr", text });
+  // Also in `boot`: the console drives __main__ (see PyodideConsole below), so
+  // the prompt's namespace is __main__ and stays clean, while the console
+  // object and __repl_* helpers live out of its sight.
   const versions = await pyodide.runPythonAsync(`
 import __main__
 from js import __replStdout, __replStderr
@@ -317,7 +341,7 @@ async def __repl_push(line):
 import sys
 from importlib.metadata import version as __dist_version
 f"{sys.version.split()[0]}|{__dist_version('labgrid')}"
-`);
+`, { globals: boot });
   const [pyVersion, labgridVersion] = versions.split("|");
   const banner =
     `Python ${pyVersion} (Pyodide ${pyodide.version}) on wasm32 -- ` +
@@ -351,13 +375,13 @@ const run = (msg) => respond(msg.id, async () => {
 });
 
 const repl = (msg) => respond(msg.id, () => {
-  pyodide.globals.set("__repl_line", msg.code);
-  return pyodide.runPythonAsync("await __repl_push(__repl_line)");
+  boot.set("__repl_line", msg.code);
+  return pyodide.runPythonAsync("await __repl_push(__repl_line)", { globals: boot });
 });
 
 const replComplete = (msg) => respond(msg.id, () => {
-  pyodide.globals.set("__repl_source", msg.source);
-  return pyodide.runPythonAsync("__repl_complete(__repl_source)");
+  boot.set("__repl_source", msg.source);
+  return pyodide.runPythonAsync("__repl_complete(__repl_source)", { globals: boot });
 });
 
 /**
@@ -370,14 +394,14 @@ const replComplete = (msg) => respond(msg.id, () => {
  */
 const writeFile = (msg) => respond(msg.id, async () => {
   pyodide.FS.writeFile(msg.path, msg.source);
-  pyodide.globals.set("__written_path", msg.path);
+  boot.set("__written_path", msg.path);
   await pyodide.runPythonAsync(`
 import sys
 for __name in [n for n, m in list(sys.modules.items())
                if getattr(m, "__file__", None) == __written_path]:
     del sys.modules[__name]
 del __written_path
-`);
+`, { globals: boot });
   return msg.path;
 });
 
