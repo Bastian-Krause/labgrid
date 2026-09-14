@@ -248,9 +248,10 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
   instead of a real QEMU process; otherwise this is stock labgrid.</li>
   <li id="fn2">See the <code>qemubareboxstrategy.py</code> tab.</li>
   <li id="fn3">See the <code>env.yaml</code> tab.</li>
-  <li id="fn4">A minimal systemd image, stripped and reordered so the login prompt is up in
-  seconds under emulation; its networking runs through a user-space TCP/IP stack in the
-  page, not the host's.</li>
+  <li id="fn4">A minimal BusyBox image on musl (an 8&nbsp;MB download), with an LZ4
+  uniprocessor kernel and a trimmed kernel log so the login prompt is up in seconds under
+  emulation; its networking runs through a user-space TCP/IP stack in the page, not the
+  host's.</li>
   <li id="fn5">The suite's pytest fixtures are patched the same way; see the <code>test_demo.py</code> tab.</li>
 </ol>
 
