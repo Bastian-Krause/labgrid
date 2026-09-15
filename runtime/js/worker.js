@@ -75,6 +75,19 @@ const bridge = {
   stageFile(name, bytes) {
     post({ type: "stage-file", name, bytes: bytes.slice() });
   },
+
+  /**
+   * Put the console line discipline into raw mode (on=true) or back to cooked.
+   * ShellDriver.get()/put() drive XMODEM, a binary protocol, over the console;
+   * the page's xterm-pty is a second line discipline in series with the guest's
+   * own tty, and its cooked default would corrupt the byte stream. labgrid flips
+   * it raw for the duration of a transfer and cooked again after (labgrid_wasm
+   * wraps _get_bytes/_put_bytes). Fire-and-forget: it is a postMessage, ordered
+   * ahead of the writeConsole/tx postMessages that follow it.
+   */
+  setConsoleRaw(on) {
+    post({ type: "set-raw", on: !!on });
+  },
 };
 
 /** Park until the main thread reports QEMU running or dead. */

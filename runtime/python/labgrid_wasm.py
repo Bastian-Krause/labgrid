@@ -62,7 +62,10 @@ install_shims()
 from pexpect import TIMEOUT  # noqa: E402
 from pyodide.ffi import to_js  # noqa: E402
 
-from labgrid.driver import HTTPProviderDriver, QEMUDriver  # noqa: E402
+import functools  # noqa: E402
+import time  # noqa: E402
+
+from labgrid.driver import HTTPProviderDriver, QEMUDriver, ShellDriver  # noqa: E402
 from labgrid.driver.common import Driver  # noqa: E402
 from labgrid.step import step  # noqa: E402
 from labgrid.util.qmp import QMPMonitor  # noqa: E402
@@ -203,6 +206,59 @@ def _graft(holder, target):
             setattr(target, name, attr)
 
 
+def _wrap_transfer_raw(cls, name):
+    """Wrap a ShellDriver file-transfer method so the console is switched to raw
+    for its whole duration and back to cooked after.
+
+    ShellDriver.get()/put() move files with XMODEM, a binary protocol; the page's
+    xterm-pty is a second line discipline in series with the guest's tty and
+    would corrupt the stream (see runtime/js/main.js). The stock method is left
+    exactly as labgrid wrote it -- this only brackets it with the raw toggle, in
+    a finally so cooked mode is always restored, even on ExecutionError/TIMEOUT.
+    Wrapping the private _get_bytes/_put_bytes covers get/get_bytes and
+    put/put_bytes, which all funnel through them; the ordinary _run() calls
+    inside (mktemp, which lrz, stat, dd) still work, because the guest's own tty
+    keeps cooking while the page's is transparent.
+    """
+    orig = getattr(cls, name)
+
+    @functools.wraps(orig)
+    def wrapper(self, *args, **kwargs):
+        _bridge.setConsoleRaw(True)
+        try:
+            return orig(self, *args, **kwargs)
+        finally:
+            _bridge.setConsoleRaw(False)
+
+    setattr(cls, name, wrapper)
+
+
+#: Seconds to wait after the transfer command is launched, before the XMODEM
+#: protocol begins. lrz/lsz put the target's tty into raw mode as they start,
+#: and until they do the (still cooked) tty echoes and line-edits whatever
+#: labgrid sends -- so the very first init byte of the handshake would be
+#: swallowed and the protocol never syncs. Under emulation the program takes a
+#: moment to exec and configure the tty; this lets it get there first. Measured
+#: to be the whole difference between a transfer that syncs and one that NAKs
+#: itself to death.
+_XMODEM_SETTLE = 2.0
+
+
+def _wrap_xmodem_settle(cls, name):
+    """Wrap ShellDriver._start_xmodem_transfer to pause after it launches the
+    rx/sx program, so the program's raw-mode setup wins the race against the
+    first handshake byte (see _XMODEM_SETTLE)."""
+    orig = getattr(cls, name)
+
+    @functools.wraps(orig)
+    def wrapper(self, *args, **kwargs):
+        result = orig(self, *args, **kwargs)
+        time.sleep(_XMODEM_SETTLE)
+        return result
+
+    setattr(cls, name, wrapper)
+
+
 def bind(bridge):
     """Wire the JS bridge into the grafted methods and copy them onto the stock
     classes. `bridge` is the object worker.js exports. Call once, before any
@@ -212,4 +268,9 @@ def bind(bridge):
     _bridge = bridge
     _graft(_QEMUDriverWasm, QEMUDriver)
     _graft(_HTTPProviderWasm, HTTPProviderDriver)
+    # get()/put() are inherited stock; only the console needs bracketing raw for
+    # their XMODEM transfer, so wrap rather than graft (see _wrap_transfer_raw).
+    _wrap_transfer_raw(ShellDriver, "_get_bytes")
+    _wrap_transfer_raw(ShellDriver, "_put_bytes")
+    _wrap_xmodem_settle(ShellDriver, "_start_xmodem_transfer")
     return QEMUDriver

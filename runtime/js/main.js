@@ -107,6 +107,27 @@ xterm.open(document.getElementById("terminal"));
 const { master, slave } = openpty();
 Module.pty = slave; // stock: exactly what the upstream demo does
 
+// XMODEM (ShellDriver.get/put) needs the console 8-bit clean. xterm-pty runs a
+// full line discipline in series with the guest's own tty, and its cooked
+// default would strip the 8th bit, translate CR/LF, echo, and interpret ^C/^Z
+// -- corrupting the binary stream both ways. labgrid flips it to raw around a
+// transfer (the set-raw bridge message) and back after; meanwhile the guest's
+// tty stays the sole line discipline, so ordinary commands still cook normally.
+// Raw is the same termios with every iflag/oflag/lflag bit cleared (no ISTRIP,
+// ICRNL, OPOST, ECHO, ICANON, ISIG), keeping cflag (CS8) and the control chars.
+// Assign through the ldisc's `termios` setter, not its `.T` field: the setter
+// also rebuilds the key-action table (VINTR/VEOF/VSUSP and the IXON flow-control
+// VSTART/VSTOP). Setting `.T` alone would leave that table cooked, so an XOFF
+// (0x13) byte in the XMODEM stream would pause output (a stall) and 0x03/0x04/
+// 0x1a would be eaten as signals -- exactly what broke the transfer.
+const cookedTermios = master.ldisc.termios;
+const rawTermios = new cookedTermios.constructor(0, 0, cookedTermios.cflag, 0, cookedTermios.cc);
+let consoleRaw = false;
+function setConsoleRaw(on) {
+  consoleRaw = !!on;
+  master.ldisc.termios = consoleRaw ? rawTermios : cookedTermios;
+}
+
 const ring = createRing(1 << 20);
 const qmpRing = createRing(1 << 16);
 const note = createNote();
@@ -138,13 +159,19 @@ function flushRender() {
 }
 
 master.onWrite(([bytes, ack]) => {
-  renderQueue.push(bytes);
-  if (!renderQueued) {
-    renderQueued = true;
-    requestAnimationFrame(flushRender);
+  // During a raw transfer the console carries binary XMODEM, not text: don't
+  // render it (its bytes include ESC sequences that would corrupt the terminal)
+  // and don't grow the console mirror with it. labgrid still gets every byte
+  // through the ring below, which is what the transfer reads.
+  if (!consoleRaw) {
+    renderQueue.push(bytes);
+    if (!renderQueued) {
+      renderQueued = true;
+      requestAnimationFrame(flushRender);
+    }
+    consoleChunks.push(String.fromCharCode(...bytes));
+    consoleCache = null;
   }
-  consoleChunks.push(String.fromCharCode(...bytes));
-  consoleCache = null;
   try {
     writer.write(bytes);
   } catch (err) {
@@ -411,6 +438,11 @@ worker.onmessage = (event) => {
       break;
     case "tx":
       toGuest(msg.bytes);
+      break;
+    case "set-raw":
+      // labgrid toggles the console line discipline raw around an XMODEM
+      // transfer (ShellDriver.get/put); ordered before the tx that follows.
+      setConsoleRaw(msg.on);
       break;
     case "qmp-tx":
       if (qmp) qmp.send(msg.bytes);
