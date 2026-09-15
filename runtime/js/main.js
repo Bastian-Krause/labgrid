@@ -9,6 +9,7 @@
 
 import { createRing, createNote, RingWriter, setNote, RUNNING, STOPPED } from "./ringbuffer.js";
 import { createQmpChannel } from "./qmpchannel.js";
+import { createSshChannel } from "./sshchannel.js";
 import { fetchGuestManifest, fetchGuestFiles } from "./guestfs.js";
 import { initEditors } from "./editor.js";
 import { createFakeQmp, startFakeConsole } from "./fakeguest.js";
@@ -47,7 +48,8 @@ Object.defineProperty(state, "console", {
 window.__demo = state;
 
 // Bridge state, so a failure dump shows *why* rather than just what.
-const counters = { ttyPoll: 0, qmpInCall: 0, qmpInBytes: 0, qmpOutBytes: 0 };
+const counters = { ttyPoll: 0, qmpInCall: 0, qmpInBytes: 0, qmpOutBytes: 0,
+                   sshInCall: 0, sshInBytes: 0, sshOutBytes: 0 };
 state.counters = counters;
 
 state.probe = () => ({
@@ -61,6 +63,9 @@ state.probe = () => ({
   qmpUnread: new Int32Array(qmpRing.ctl)[1] - new Int32Array(qmpRing.ctl)[2],
   qmpToQemuPending: qmp ? qmp.toQemu.length : null,
   qmpFromQemuBytes: qmp ? qmp.fromQemu.length : null,
+  sshUnread: new Int32Array(sshRing.ctl)[1] - new Int32Array(sshRing.ctl)[2],
+  sshToQemuPending: ssh ? ssh.toQemu.length : null,
+  sshFromQemuBytes: ssh ? ssh.fromQemu.length : null,
 });
 
 /** The machine-readable status; tests and probes poll window.__demo.status. */
@@ -130,9 +135,11 @@ function setConsoleRaw(on) {
 
 const ring = createRing(1 << 20);
 const qmpRing = createRing(1 << 16);
+const sshRing = createRing(1 << 18); // SSH carries bulk (scp); larger than QMP's
 const note = createNote();
 const writer = new RingWriter(ring);
 const qmpWriter = new RingWriter(qmpRing);
+const sshWriter = new RingWriter(sshRing);
 const LOW_WATER = 64 * 1024;
 let deferredAck = null;
 
@@ -194,6 +201,7 @@ xterm.onBinary(toGuest);
 
 let qemuStarted = false;
 let qmp = null;
+let ssh = null;
 
 // The guest files are independent of anything labgrid decides, so fetching them
 // does not have to wait for Pyodide to finish booting. Started here, awaited in
@@ -275,11 +283,13 @@ async function startReplay(argv, onQmpByte) {
     window.__qmp = qmp;
 
     writer.setState(RUNNING);
+    sshWriter.setState(STOPPED); // no SSH channel in replay; transition("ssh") fails fast
     narrate(`replaying ${fixture.boot.length} recorded bytes (no QEMU)`);
   } catch (err) {
     setNote(note, String(err));
     writer.setState(STOPPED);
     qmpWriter.setState(STOPPED);
+    sshWriter.setState(STOPPED);
     setFatal("replay failed: " + err);
   }
 }
@@ -316,6 +326,26 @@ async function startQemu(argv) {
 
   qmp = createQmpChannel(Module, "/dev/lgqmp", onQmpByte, counters);
 
+  // The SSHDriver's serial channel. Unlike QMP it carries an opaque binary
+  // stream with no line boundaries, so bytes are written to the ring as they
+  // arrive rather than flushed on newline. The write is "quiet" (no notify)
+  // because it happens inside QEMU's proxied write syscall, exactly like the
+  // QMP one; the worker's readSsh polls the ring in slices, so it is still
+  // seen. One byte per ring write is fine for SSH's handshake and the small
+  // scp transfers the demo does. Only used once a strategy enters the ssh
+  // state; before that the channel sits idle.
+  const sshOne = new Uint8Array(1);
+  const onSshByte = (byte) => {
+    sshOne[0] = byte;
+    try {
+      sshWriter.write(sshOne, true);
+    } catch (err) {
+      state.errors.push("ssh ring: " + String(err));
+    }
+  };
+  ssh = createSshChannel(Module, "/dev/lgssh", onSshByte, counters);
+  window.__ssh = ssh;
+
   // History: with the unpatched upstream QEMU-WASM build, QMP went permanently
   // silent after ~10-60s of monitor idle. Root cause (found with an
   // instrumented rebuild): xterm-pty's poll wrapper ignores the caller's
@@ -325,7 +355,7 @@ async function startQemu(argv) {
   // below. Upstream's prebuilt binary still has the bug and is not fetched.
 
   window.__qmp = qmp;
-  argv = [...argv, ...qmp.args()]; // -S comes from labgrid itself
+  argv = [...argv, ...qmp.args(), ...ssh.args()]; // -S comes from labgrid itself
 
   state.argv = argv; // recorded so tests can assert on what labgrid actually built
 
@@ -336,6 +366,7 @@ async function startQemu(argv) {
     setNote(note, why);
     writer.setState(STOPPED);
     qmpWriter.setState(STOPPED);
+    sshWriter.setState(STOPPED);
     setFatal(why);
   };
   Module.onExit = (code) => died(`QEMU-WASM exited (status ${code})`);
@@ -386,6 +417,8 @@ async function startQemu(argv) {
 
     const qmpPolls = qmp.attachPolls(Module);
     if (!qmpPolls) state.errors.push("could not attach QMP device polls (Module.FS missing?)");
+    const sshPolls = ssh.attachPolls(Module);
+    if (!sshPolls) state.errors.push("could not attach SSH device polls (Module.FS missing?)");
 
     writer.setState(RUNNING);
     setStatus("QEMU-WASM running");
@@ -400,6 +433,7 @@ function stopQemu() {
   // start. Real off()/cycle() arrive with the QMP channel.
   writer.setState(STOPPED);
   qmpWriter.setState(STOPPED);
+  sshWriter.setState(STOPPED);
   narrate("QEMU-WASM detached (reload for a cold start)");
 }
 
@@ -446,6 +480,10 @@ worker.onmessage = (event) => {
       break;
     case "qmp-tx":
       if (qmp) qmp.send(msg.bytes);
+      break;
+    case "ssh-tx":
+      // labgrid_wasm_ssh (asyncssh) wrote to the guest over the SSH serial channel
+      if (ssh) ssh.send(msg.bytes);
       break;
     case "stage-file":
       // HTTPProviderDriver.stage() ran in the worker; hold the bytes so the
@@ -668,4 +706,4 @@ state.editors = initEditors({
 // guest. It rides next to the guest images (QEMU_BASE, from index.html); the
 // replay tier has no guest to stream to, so it is skipped there.
 const raucBundleUrl = REPLAY ? null : QEMU_BASE + "images/rauc/demo.raucb";
-worker.postMessage({ type: "init", ring, qmpRing, note, qemuVersion: QEMU_VERSION, raucBundleUrl });
+worker.postMessage({ type: "init", ring, qmpRing, sshRing, note, qemuVersion: QEMU_VERSION, raucBundleUrl });

@@ -1,6 +1,7 @@
 """An example labgrid test suite."""
 
 import datetime
+import os
 
 import pytest
 
@@ -17,6 +18,13 @@ def shell(strategy):
     """Returns ShellDriver with the board being in shell state."""
     strategy.transition("shell")
     return strategy.shell
+
+
+@pytest.fixture
+def ssh(strategy):
+    """Returns SSHDriver with the board being in ssh state."""
+    strategy.transition("ssh")
+    return strategy.ssh
 
 
 def test_barebox_dhcp(barebox):
@@ -56,6 +64,23 @@ def test_linux_dmesg_has_no_unexpected_warnings(shell):
         if line.startswith(allowed):
             warnings.remove(line)
     assert warnings == []
+
+
+def test_ssh_runs_commands(ssh):
+    """Commands run over the SSHDriver's connection reach the same target."""
+    [uname] = ssh.run_check("uname -a")
+    assert uname.startswith("Linux qemu-armv7a")
+
+
+def test_ssh_file_round_trip(ssh, tmp_path):
+    """A file survives put() to the target and get() back over scp."""
+    payload = os.urandom(2048)
+    (tmp_path / "out").write_bytes(payload)
+
+    ssh.put(str(tmp_path / "out"), "/tmp/round-trip")
+    ssh.get("/tmp/round-trip", str(tmp_path / "back"))
+
+    assert (tmp_path / "back").read_bytes() == payload
 
 
 def test_rauc_streams_a_bundle_over_https(env, strategy, shell):

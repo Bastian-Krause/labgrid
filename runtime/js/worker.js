@@ -10,6 +10,7 @@ import { loadPyodide } from "../../vendor/pyodide/pyodide.mjs";
 let pyodide = null;
 let reader = null;
 let qmpReader = null;
+let sshReader = null;
 let note = null;
 let ctl = null;
 // A private namespace for the platform plumbing (the bridge bind, the
@@ -19,6 +20,11 @@ let ctl = null;
 // -- visibly imported. The plumbing's process-global effects still apply; only
 // its names stay out of the prompt's reach.
 let boot = null;
+// Resolves once the SSH backend's packages are loaded (cryptography + asyncssh).
+// Kicked off right after "ready" -- off the boot->prompt path -- and awaited by
+// the first repl/run so `import asyncssh` in on_activate can never race it. See
+// the load just after post("ready"). Null until then; awaiting null is a no-op.
+let sshBackendReady = null;
 
 const post = (msg) => self.postMessage(msg);
 const status = (text) => post({ type: "status", text });
@@ -63,6 +69,17 @@ const bridge = {
 
   writeQmp(bytes) {
     post({ type: "qmp-tx", bytes: Array.from(bytes) });
+  },
+
+  /** Same contract as readConsole/readQmp, for the SSHDriver's serial channel.
+   * labgrid_wasm_ssh's event loop blocks here (Atomics.wait in the ring) while
+   * asyncssh waits for the guest's dropbear, exactly as the console reader does. */
+  readSsh(timeoutMs, maxBytes) {
+    return sshReader.read(maxBytes, timeoutMs) || undefined;
+  },
+
+  writeSsh(bytes) {
+    post({ type: "ssh-tx", bytes: Array.from(bytes) });
   },
 
   /**
@@ -160,6 +177,7 @@ json.dumps([p for p in Config("${DEMO_DIR}/env.yaml").get_imports() if p.endswit
 async function init(msg) {
   reader = new RingReader(msg.ring);
   qmpReader = new RingReader(msg.qmpRing);
+  sshReader = new RingReader(msg.sshRing);
   ctl = new Int32Array(msg.ring.ctl);
   note = msg.note;
   bridge.qemuVersion = msg.qemuVersion;
@@ -192,6 +210,7 @@ async function init(msg) {
   // see the module's own comment.
   const py = new URL("../python/", import.meta.url).href;
   for (const [name, as] of [["labgrid_wasm.py", "labgrid_wasm.py"],
+                            ["labgrid_wasm_ssh.py", "labgrid_wasm_ssh.py"],
                             ["grpc_stub.py", "grpc.py"]]) {
     const src = await (await fetch(py + name)).text();
     pyodide.FS.writeFile("/lib/python3.14/site-packages/" + as, src);
@@ -214,7 +233,11 @@ async function init(msg) {
   // file next to the config (no tests/ subdir, no testpaths), so a bare
   // pytest.main() at the prompt discovers it from the rootdir.
   for (const name of ["env.yaml", "prompt_startup.py", "conftest.py", "pytest.ini",
-                      "test_demo.py"]) {
+                      "test_demo.py",
+                      // the demo SSH keypair: ShellDriver deploys the .pub to the
+                      // guest's authorized_keys at the shell transition; SSHDriver
+                      // authenticates with the private key at the ssh transition.
+                      "keys/demo_ed25519", "keys/demo_ed25519.pub"]) {
     await fetchDemoFile(demo, name);
   }
 
@@ -361,6 +384,24 @@ f"{sys.version.split()[0]}|{__dist_version('labgrid')}"
     `labgrid ${labgridVersion}, QEMU ${bridge.qemuVersion} (WebAssembly)`;
 
   post({ type: "ready", banner }); // the banner is the "ready" the human sees
+
+  // The SSH backend, loaded now rather than before "ready": cryptography and
+  // asyncssh are only needed once a strategy enters the ssh state, and a human
+  // cannot type in the ~0.25 s this takes -- so it costs the prompt nothing and
+  // is visible only to a harness measuring page->on(). The first repl/run awaits
+  // sshBackendReady, so `import asyncssh` in SSHDriver.on_activate cannot run
+  // before the wheels are in. cryptography (with cffi/pycparser/six) comes from
+  // the pyodide lock via loadPackage; asyncssh is a pure-python wheel installed
+  // by micropip from vendor/asyncssh/ -- its own index.txt, as vendor/wheels/
+  // has, so setup.sh's pin is the one place the version lives, and a directory
+  // of its own so boot does not install it. The larger `import asyncssh` cost
+  // stays deferred to on_activate itself.
+  const sshWheels = new URL("../../vendor/asyncssh/", import.meta.url).href;
+  sshBackendReady = (async () => {
+    await pyodide.loadPackage(["cryptography", "typing-extensions"]);
+    const names = (await (await fetch(sshWheels + "index.txt")).text()).trim().split("\n");
+    await micropip.install.callKwargs(names.map((name) => sshWheels + name), { deps: false });
+  })().catch((err) => post({ type: "stderr", line: `ssh backend load failed: ${err}` }));
 }
 
 /** Run fn and post its return value back to the main thread as this command's
@@ -374,6 +415,7 @@ async function respond(id, fn) {
 }
 
 const run = (msg) => respond(msg.id, async () => {
+  if (sshBackendReady) await sshBackendReady; // ssh backend in before any code runs
   const value = await pyodide.runPythonAsync(msg.code);
   // Only structured-cloneable values survive postMessage. Python objects that
   // do not convert cleanly (a re.Match from expect(), say) would otherwise fail
@@ -387,7 +429,8 @@ const run = (msg) => respond(msg.id, async () => {
   }
 });
 
-const repl = (msg) => respond(msg.id, () => {
+const repl = (msg) => respond(msg.id, async () => {
+  if (sshBackendReady) await sshBackendReady; // ssh backend in before the first line
   boot.set("__repl_line", msg.code);
   return pyodide.runPythonAsync("await __repl_push(__repl_line)", { globals: boot });
 });

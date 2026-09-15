@@ -65,7 +65,7 @@ from pyodide.ffi import to_js  # noqa: E402
 import functools  # noqa: E402
 import time  # noqa: E402
 
-from labgrid.driver import HTTPProviderDriver, QEMUDriver, ShellDriver  # noqa: E402
+from labgrid.driver import HTTPProviderDriver, QEMUDriver, SSHDriver, ShellDriver  # noqa: E402
 from labgrid.driver.common import Driver  # noqa: E402
 from labgrid.step import step  # noqa: E402
 from labgrid.util.qmp import QMPMonitor  # noqa: E402
@@ -259,6 +259,29 @@ def _wrap_xmodem_settle(cls, name):
     setattr(cls, name, wrapper)
 
 
+def _wrap_ssh_on_activate(cls):
+    """Wrap SSHDriver.on_activate so the SSH backend (asyncssh + the subprocess
+    shim, in labgrid_wasm_ssh) is imported and installed the first time a
+    strategy activates the SSHDriver -- i.e. only when it enters an `ssh` state,
+    never at boot. That keeps asyncssh and the cryptography import (~0.4 s) off
+    the boot->shell path; nothing here runs unless the demo actually goes to ssh.
+
+    labgrid_wasm_ssh installs a subprocess look-alike onto labgrid.driver.sshdriver
+    that runs the ssh/scp argv SSHDriver builds over asyncssh (see that module).
+    The stock on_activate then runs unchanged -- it starts the "master" connection
+    and the keepalive through the shim, logging exactly what native labgrid logs.
+    """
+    orig = cls.on_activate
+
+    @functools.wraps(orig)
+    def wrapper(self):
+        import labgrid_wasm_ssh
+        labgrid_wasm_ssh.ensure_installed(_bridge)
+        return orig(self)
+
+    cls.on_activate = wrapper
+
+
 def bind(bridge):
     """Wire the JS bridge into the grafted methods and copy them onto the stock
     classes. `bridge` is the object worker.js exports. Call once, before any
@@ -268,6 +291,9 @@ def bind(bridge):
     _bridge = bridge
     _graft(_QEMUDriverWasm, QEMUDriver)
     _graft(_HTTPProviderWasm, HTTPProviderDriver)
+    # SSHDriver: unchanged until first activated, then backed by asyncssh over
+    # the SSH serial channel (labgrid_wasm_ssh, imported lazily by the wrapper).
+    _wrap_ssh_on_activate(SSHDriver)
     # get()/put() are inherited stock; only the console needs bracketing raw for
     # their XMODEM transfer, so wrap rather than graft (see _wrap_transfer_raw).
     _wrap_transfer_raw(ShellDriver, "_get_bytes")

@@ -14,6 +14,7 @@ class Status(enum.Enum):
     off = 1
     barebox = 2
     shell = 3
+    ssh = 4
 
 
 @target_factory.reg_driver
@@ -25,6 +26,7 @@ class QEMUBareboxStrategy(Strategy):
         "qemu": "QEMUDriver",
         "barebox": "BareboxDriver",
         "shell": "ShellDriver",
+        "ssh": "SSHDriver",
     }
 
     status = attr.ib(default=Status.unknown)
@@ -44,6 +46,7 @@ class QEMUBareboxStrategy(Strategy):
             return
 
         if status == Status.off:
+            self.target.deactivate(self.ssh)
             self.target.deactivate(self.barebox)
             self.target.deactivate(self.shell)
 
@@ -70,6 +73,14 @@ class QEMUBareboxStrategy(Strategy):
                 if timeout.expired:
                     raise StrategyError(f"eth0 got no DHCP lease within {timeout.timeout} seconds")
                 time.sleep(1)
+        elif status == Status.ssh:
+            # Usual labgrid pattern: use the serial ShellDriver until a solid
+            # connection (ssh) is up, then switch to it. The shell transition has
+            # already deployed the public key (ShellDriver.keyfile) and confirmed
+            # the lease, so activating the SSHDriver here opens the master
+            # connection over the (now key-authorised) sshd.
+            self.transition(Status.shell)
+            self.target.activate(self.ssh)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
 
@@ -95,6 +106,11 @@ class QEMUBareboxStrategy(Strategy):
             self.target.activate(self.http)
             self.target.activate(self.qemu)
             self.target.activate(self.shell)
+        elif status == Status.ssh:
+            self.target.activate(self.http)
+            self.target.activate(self.qemu)
+            self.target.activate(self.shell)
+            self.target.activate(self.ssh)
         else:
             raise StrategyError(f"can not force state {status}")
 
