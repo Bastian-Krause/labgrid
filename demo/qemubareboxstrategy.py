@@ -77,9 +77,12 @@ class QEMUBareboxStrategy(Strategy):
             # Usual labgrid pattern: use the serial ShellDriver until a solid
             # connection (ssh) is up, then switch to it. The shell transition has
             # already deployed the public key (ShellDriver.keyfile) and confirmed
-            # the lease, so activating the SSHDriver here opens the master
-            # connection over the (now key-authorised) sshd.
+            # the lease. Start the guest's sshd over the serial console now (it is
+            # not started at boot, so boot-to-shell pays nothing for SSH -- see
+            # the guest image), then activate the SSHDriver over the now-running,
+            # key-authorised sshd.
             self.transition(Status.shell)
+            self.shell.run_check("dropbear")
             self.target.activate(self.ssh)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
