@@ -211,10 +211,12 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
     <ul>
       <li><a href="https://github.com/labgrid-project/labgrid">labgrid</a> is unmodified, installed
         from a wheel built from upstream. Only a few methods are rebound, to talk to this page
-        instead of to a POSIX host: five on <code>QEMUDriver</code>, plus
-        <code>HTTPProviderDriver.stage()</code>, which serves the
+        instead of to a POSIX host: five on <code>QEMUDriver</code>,
+        <code>HTTPProviderDriver.stage()</code> (which serves the
         <a href="https://rauc.io/">RAUC</a> bundle to the guest over the
-        in-browser network stack instead of from an HTTP server.</li>
+        in-browser network stack instead of from an HTTP server), and the
+        <code>SSHDriver</code>'s <code>ssh</code>/<code>scp</code>, which run over
+        asyncssh into the guest &mdash; see below.</li>
       <li><a href="https://pyodide.org/">Pyodide</a> is CPython compiled to WebAssembly. labgrid and
         <a href="https://pytest.org/">pytest</a> run there, in a worker, where they are allowed to
         block.</li>
@@ -235,6 +237,13 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
       <li><a href="https://xtermjs.org/">xterm.js</a> and
         <a href="https://github.com/mame/xterm-pty">xterm-pty</a> are the terminal. The bridge taps the
         pty master &mdash; where a human sits, and labgrid is just a second human.</li>
+      <li>The <code>SSHDriver</code> works without a network:
+        <a href="https://asyncssh.readthedocs.io/">asyncssh</a> runs in the same worker as labgrid and
+        carries its <code>ssh</code>/<code>scp</code> over a dedicated virtio-serial channel (a third
+        SharedArrayBuffer ring), not TCP. In the guest,
+        <a href="https://matt.ucc.asn.au/dropbear/dropbear.html">Dropbear</a> is the sshd and
+        <a href="http://www.dest-unreach.org/socat/">socat</a> bridges that serial port to it &mdash;
+        both started on demand at the <code>ssh</code> transition, not at boot.</li>
       <li><a href="https://github.com/gzuidhof/coi-serviceworker">coi-serviceworker</a> sets the
         COOP/COEP headers client-side, so the SharedArrayBuffer the console bridge and QEMU-WASM's
         threads depend on works on a plain static host like GitHub Pages.</li>
