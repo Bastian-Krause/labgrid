@@ -1,15 +1,27 @@
 // Page side: the terminal, the console bridge, and the QEMU-WASM lifecycle.
 //
-// The bridge taps the *master* side of the pty, which is where a human at a
-// terminal sits -- and labgrid is just a second human. Master.activate() does
-// exactly two things (onWrite towards the terminal, ldisc.writeFromLower away
-// from it), so we do those two things ourselves and splice labgrid in. That
-// leaves Module.pty as the untouched xterm-pty Slave, so emscripten-pty.js and
-// the TTY poll patch behave exactly as they do upstream.
+// The guest's serial console is a pipe chardev of our own (consolechannel.js):
+// what QEMU writes goes to the xterm and into the console ring for labgrid, and
+// typed keys and labgrid's tx go back the same way. It is deliberately not on
+// QEMU's stdio, i.e. not on xterm-pty's TTY: that is the one fd whose poll
+// returns immediately in this build, and with the serial port there QEMU's
+// main loop spun through the proxied-syscall queue (~1.2 cores with the guest
+// idle at a prompt; see consolechannel.js).
+//
+// xterm-pty stays installed as Module.pty -- the untouched Slave, so
+// emscripten-pty.js and the TTY poll patch behave exactly as upstream -- for
+// QEMU's own stdio (its warnings and errors, rendered like everything else) and
+// for the replay tier, which has no QEMU and feeds the recorded boot through the
+// pty. Where the pty is in the path, the bridge taps its *master* side, which is
+// where a human at a terminal sits -- and labgrid is just a second human:
+// Master.activate() does exactly two things (onWrite towards the terminal,
+// ldisc.writeFromLower away from it), so we do those two things ourselves and
+// splice labgrid in.
 
 import { createRing, createNote, RingWriter, setNote, RUNNING, STOPPED } from "./ringbuffer.js";
 import { createQmpChannel } from "./qmpchannel.js";
 import { createSshChannel } from "./sshchannel.js";
+import { createConsoleChannel } from "./consolechannel.js";
 import { fetchGuestManifest, fetchGuestFiles } from "./guestfs.js";
 import { initEditors } from "./editor.js";
 import { createFakeQmp, startFakeConsole } from "./fakeguest.js";
@@ -49,7 +61,8 @@ window.__demo = state;
 
 // Bridge state, so a failure dump shows *why* rather than just what.
 const counters = { ttyPoll: 0, qmpInCall: 0, qmpInBytes: 0, qmpOutBytes: 0,
-                   sshInCall: 0, sshInBytes: 0, sshOutBytes: 0 };
+                   sshInCall: 0, sshInBytes: 0, sshOutBytes: 0,
+                   conInCall: 0, conInBytes: 0, conOutBytes: 0 };
 state.counters = counters;
 
 state.probe = () => ({
@@ -130,7 +143,9 @@ const rawTermios = new cookedTermios.constructor(0, 0, cookedTermios.cflag, 0, c
 let consoleRaw = false;
 function setConsoleRaw(on) {
   consoleRaw = !!on;
-  master.ldisc.termios = consoleRaw ? rawTermios : cookedTermios;
+  // The pipe console has no line discipline at all -- it is 8-bit clean by
+  // construction -- so only the pty path (replay) has a termios to flip.
+  if (!con) master.ldisc.termios = consoleRaw ? rawTermios : cookedTermios;
 }
 
 const ring = createRing(1 << 20);
@@ -165,20 +180,43 @@ function flushRender() {
   xterm.write(joined);
 }
 
-master.onWrite(([bytes, ack]) => {
-  // During a raw transfer the console carries binary XMODEM, not text: don't
-  // render it (its bytes include ESC sequences that would corrupt the terminal)
-  // and don't grow the console mirror with it. labgrid still gets every byte
-  // through the ring below, which is what the transfer reads.
-  if (!consoleRaw) {
-    renderQueue.push(bytes);
-    if (!renderQueued) {
-      renderQueued = true;
-      requestAnimationFrame(flushRender);
-    }
-    consoleChunks.push(String.fromCharCode(...bytes));
-    consoleCache = null;
+// What every console byte gets, whichever way it arrives (pty or pipe): the
+// xterm, batched per frame, and the console mirror. During a raw transfer the
+// console carries binary XMODEM, not text: don't render it (its bytes include
+// ESC sequences that would corrupt the terminal) and don't grow the mirror with
+// it. labgrid still gets every byte through the ring, which is what the
+// transfer reads.
+function renderConsole(bytes) {
+  if (consoleRaw) return;
+  renderQueue.push(bytes);
+  if (!renderQueued) {
+    renderQueued = true;
+    requestAnimationFrame(flushRender);
   }
+  consoleChunks.push(String.fromCharCode(...bytes));
+  consoleCache = null;
+}
+
+// The pipe console's output (consolechannel.js). This runs inside QEMU's
+// proxied write syscall, so the ring write is quiet (see RingWriter.write) and
+// the reader's wake-up is deferred to a task of its own; the reader would see
+// the bytes within its 25 ms poll slice regardless. Backpressure has already
+// happened by the time this runs: the device takes at most consoleRoom() bytes
+// per write and reports no POLLOUT below it, which stalls QEMU exactly where
+// xterm-pty's deferred ack did.
+let bumpQueued = false;
+function onPipeConsoleBytes(bytes) {
+  renderConsole(bytes);
+  writer.write(bytes, true);
+  if (!bumpQueued) {
+    bumpQueued = true;
+    setTimeout(() => { bumpQueued = false; writer.bump(); }, 0);
+  }
+}
+const consoleRoom = () => Math.max(0, writer.free - LOW_WATER);
+
+master.onWrite(([bytes, ack]) => {
+  renderConsole(bytes);
   try {
     writer.write(bytes);
   } catch (err) {
@@ -193,7 +231,10 @@ master.onWrite(([bytes, ack]) => {
 });
 
 
-const toGuest = (data) => master.ldisc.writeFromLower(data);
+// Typed keys and labgrid's tx go to the pipe console once QEMU runs; in replay
+// (no QEMU; the console is fed through the pty slave) they go to the pty.
+let con = null;
+const toGuest = (data) => (con ? con.send(data) : master.ldisc.writeFromLower(data));
 xterm.onData(toGuest);
 xterm.onBinary(toGuest);
 
@@ -213,7 +254,7 @@ state.guest = guest;
 async function prepareGuest() {
   if (REPLAY) {
     // Nothing to fetch: there is no QEMU to feed. This is most of why the
-    // replay tier is fast -- it skips a 9 MB download and a 66 MB wasm.
+    // replay tier is fast -- it skips the guest images and the QEMU module.
     guest.mode = "replay";
     guest.done = true;
     return;
@@ -233,11 +274,12 @@ guestReady.catch(() => {}); // the real handling is in startQemu; this just avoi
 // The same for QEMU's own side, everything that does not depend on labgrid's
 // command line: the in-browser network stack (stack.js, its worker with the
 // c2w wasm, the MITM CA -- see browsernet.js), the Emscripten loader (out.js)
-// and the compiled QEMU module, 22 MB on the wire and a compile that, from a
+// and the compiled QEMU module, ~4 MB on the wire and a compile that, from a
 // warm cache, was most of what "starting QEMU-WASM" cost. Kicked off when the
 // worker reports its downloads done -- after the wheels, not after Pyodide
-// alone: started that early, QEMU's 27 MB starved the wheels on a shared
-// 50 Mbit/s link and pushed "labgrid ready" from 5.8 to 10.4 s (measured).
+// alone: started that early, back when QEMU's side was 27 MB, it starved the
+// wheels on a shared 50 Mbit/s link and pushed "labgrid ready" from 5.8 to
+// 10.4 s (measured); QEMU's side is ~10 MB today, the network stack half of it.
 // From here the Python side has ~1.5 s of CPU left before "ready", which on a
 // warm load covers the stack's start and the module's compile from cache.
 // The machine itself is still built at activation: the command line is
@@ -252,7 +294,7 @@ function prepareQemu() {
       import(QEMU_BASE + "out.js"),
       // needs application/wasm from the server, as Emscripten's own streaming
       // path does; if that fails Emscripten falls back to fetching it itself
-      WebAssembly.compileStreaming(fetch(QEMU_BASE + "qemu-system-aarch64.wasm", { credentials: "same-origin" }))
+      WebAssembly.compileStreaming(fetch(QEMU_BASE + "qemu-system-arm.wasm", { credentials: "same-origin" }))
         .catch((e) => { console.warn("QEMU-WASM precompile failed, leaving it to Emscripten:", e); return null; }),
     ]);
     return { init: loader.default, module };
@@ -346,6 +388,14 @@ async function startQemu(argv) {
   ssh = createSshChannel(Module, "/dev/lgssh", onSshByte, counters);
   window.__ssh = ssh;
 
+  // The serial console itself, on a pipe chardev rather than the TTY. With the
+  // monitor and the serial port both named, -nographic attaches nothing to
+  // stdio, so QEMU's main loop no longer polls the TTY -- the one fd whose poll
+  // returns immediately -- and stops spinning (consolechannel.js). The device
+  // takes at most consoleRoom() bytes per write, so QEMU stalls exactly where
+  // xterm-pty's deferred ack used to stall it.
+  con = createConsoleChannel(Module, "/dev/lgcon", { onBytes: onPipeConsoleBytes, canAccept: consoleRoom, counters });
+
   // History: with the unpatched upstream QEMU-WASM build, QMP went permanently
   // silent after ~10-60s of monitor idle. Root cause (found with an
   // instrumented rebuild): xterm-pty's poll wrapper ignores the caller's
@@ -355,7 +405,7 @@ async function startQemu(argv) {
   // below. Upstream's prebuilt binary still has the bug and is not fetched.
 
   window.__qmp = qmp;
-  argv = [...argv, ...qmp.args(), ...ssh.args()]; // -S comes from labgrid itself
+  argv = [...argv, ...qmp.args(), ...ssh.args(), ...con.args()]; // -S comes from labgrid itself
 
   state.argv = argv; // recorded so tests can assert on what labgrid actually built
 
