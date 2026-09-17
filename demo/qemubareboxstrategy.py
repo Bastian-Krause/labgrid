@@ -81,8 +81,14 @@ class QEMUBareboxStrategy(Strategy):
             # not started at boot, so boot-to-shell pays nothing for SSH -- see
             # the guest image), then activate the SSHDriver over the now-running,
             # key-authorised sshd.
+            #
+            # `dropbear` here is the guest's /sbin wrapper, invoked exactly as the
+            # real dropbear: -s disables password logins (only the deployed key is
+            # accepted) and -r pins the image's static host key. The wrapper adds
+            # the serial transport (the loopback bind and the socat relay) behind
+            # the scenes; loopback itself is already up from boot.
             self.transition(Status.shell)
-            self.shell.run_check("dropbear")
+            self.shell.run_check("dropbear -s -r /etc/dropbear/dropbear_ed25519_host_key")
             self.target.activate(self.ssh)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
