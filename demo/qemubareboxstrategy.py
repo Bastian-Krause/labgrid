@@ -83,12 +83,14 @@ class QEMUBareboxStrategy(Strategy):
             # key-authorised sshd.
             #
             # `dropbear` here is the guest's /sbin wrapper, invoked exactly as the
-            # real dropbear: -s disables password logins (only the deployed key is
-            # accepted) and -r pins the image's static host key. The wrapper adds
-            # the serial transport (the loopback bind and the socat relay) behind
-            # the scenes; loopback itself is already up from boot.
+            # real dropbear -- plain, no options. It needs none: the static host
+            # key sits at dropbear's default path, and auth is key-only anyway
+            # (root's password is blank, which dropbear refuses over SSH, so only
+            # the deployed key gets in). The wrapper adds the serial transport (the
+            # loopback bind and the socat relay) behind the scenes; loopback itself
+            # is already up from boot.
             self.transition(Status.shell)
-            self.shell.run_check("dropbear -s -r /etc/dropbear/dropbear_ed25519_host_key")
+            self.shell.run_check("dropbear")
             self.target.activate(self.ssh)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
