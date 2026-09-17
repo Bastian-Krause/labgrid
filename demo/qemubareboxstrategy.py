@@ -14,7 +14,6 @@ class Status(enum.Enum):
     off = 1
     barebox = 2
     shell = 3
-    ssh = 4
 
 
 @target_factory.reg_driver
@@ -65,6 +64,10 @@ class QEMUBareboxStrategy(Strategy):
 
             self.barebox.boot("")
             self.barebox.await_boot()
+
+            # Activate the serial ShellDriver, which deploys the demo public key
+            # to ~/.ssh/authorized_keys over the console -- the runtime key
+            # deployment the demo showcases.
             self.target.activate(self.shell)
 
             # wait for DHCP lease
@@ -73,24 +76,11 @@ class QEMUBareboxStrategy(Strategy):
                 if timeout.expired:
                     raise StrategyError(f"eth0 got no DHCP lease within {timeout.timeout} seconds")
                 time.sleep(1)
-        elif status == Status.ssh:
-            # Usual labgrid pattern: use the serial ShellDriver until a solid
-            # connection (ssh) is up, then switch to it. The shell transition has
-            # already deployed the public key (ShellDriver.keyfile) and confirmed
-            # the lease. Start the guest's sshd over the serial console now (it is
-            # not started at boot, so boot-to-shell pays nothing for SSH -- see
-            # the guest image), then activate the SSHDriver over the now-running,
-            # key-authorised sshd.
-            #
-            # `dropbear` here is the guest's /sbin wrapper, invoked exactly as the
-            # real dropbear -- plain, no options. It needs none: the static host
-            # key sits at dropbear's default path, and auth is key-only anyway
-            # (root's password is blank, which dropbear refuses over SSH, so only
-            # the deployed key gets in). The wrapper adds the serial transport (the
-            # loopback bind and the socat relay) behind the scenes; loopback itself
-            # is already up from boot.
-            self.transition(Status.shell)
-            self.shell.run_check("dropbear")
+
+            # Bring up the SSHDriver in the same state: the guest's sshd runs from
+            # boot (inetd-style over the lgssh serial line; see the guest image),
+            # and the key is now deployed, so this just connects. There is no
+            # separate ssh state -- reaching shell means both serial and ssh are up.
             self.target.activate(self.ssh)
         else:
             raise StrategyError(f"no transition found from {self.status} to {status}")
@@ -114,10 +104,6 @@ class QEMUBareboxStrategy(Strategy):
             self.target.activate(self.qemu)
             self.target.activate(self.barebox)
         elif status == Status.shell:
-            self.target.activate(self.http)
-            self.target.activate(self.qemu)
-            self.target.activate(self.shell)
-        elif status == Status.ssh:
             self.target.activate(self.http)
             self.target.activate(self.qemu)
             self.target.activate(self.shell)

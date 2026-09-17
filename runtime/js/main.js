@@ -283,7 +283,7 @@ async function startReplay(argv, onQmpByte) {
     window.__qmp = qmp;
 
     writer.setState(RUNNING);
-    sshWriter.setState(STOPPED); // no SSH channel in replay; transition("ssh") fails fast
+    sshWriter.setState(STOPPED); // no SSH channel in replay
     narrate(`replaying ${fixture.boot.length} recorded bytes (no QEMU)`);
   } catch (err) {
     setNote(note, String(err));

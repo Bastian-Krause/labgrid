@@ -14,8 +14,8 @@ def barebox(strategy):
 
 @pytest.fixture
 def ssh(strategy):
-    """Returns SSHDriver with the board being in ssh state."""
-    strategy.transition("ssh")
+    """Returns the SSHDriver; the shell state brings up both serial and ssh."""
+    strategy.transition("shell")
     return strategy.ssh
 
 
