@@ -13,6 +13,13 @@ def barebox(strategy):
 
 
 @pytest.fixture
+def shell(strategy):
+    """Returns ShellDriver with the board being in shell state."""
+    strategy.transition("shell")
+    return strategy.shell
+
+
+@pytest.fixture
 def ssh(strategy):
     """Returns the SSHDriver; the shell state brings up both serial and ssh."""
     strategy.transition("shell")
@@ -29,15 +36,15 @@ def test_barebox_dmesg_has_no_warnings(barebox):
     assert barebox.run_check("dmesg -p warn") == []
 
 
-def test_guest_clock_is_the_real_time(ssh):
+def test_guest_clock_is_the_real_time(shell):
     """The date/time in Linux are correct."""
-    dut_time = int(ssh.run_check("date -u +%s")[0])
+    dut_time = int(shell.run_check("date -u +%s")[0])
     host_time = datetime.datetime.now(datetime.timezone.utc).timestamp()
 
     assert dut_time == pytest.approx(host_time, abs=300)
 
 
-def test_linux_dmesg_has_no_unexpected_warnings(ssh):
+def test_linux_dmesg_has_no_unexpected_warnings(shell):
     """No kernel messages at warning level or above beyond a few benign ones.
 
     --level=warn+ is util-linux dmesg's "warning and higher" threshold, the same
@@ -51,19 +58,19 @@ def test_linux_dmesg_has_no_unexpected_warnings(ssh):
         "check access for rdinit=/init failed",
         "hrtimer: interrupt took",
     )
-    warnings = ssh.run_check("dmesg --level=warn+ --notime")
+    warnings = shell.run_check("dmesg --level=warn+ --notime")
     for line in list(warnings):
         if line.startswith(allowed):
             warnings.remove(line)
     assert warnings == []
 
 
-def test_rauc_streams_a_bundle_over_https(env, strategy, ssh):
+def test_rauc_streams_a_bundle_over_https(env, strategy, shell):
     """Install a RAUC update by streaming it over HTTPS"""
     rauc_bundle = env.config.get_image_path("rauc_bundle")
     rauc_bundle_url = strategy.http.stage(rauc_bundle)
 
-    ssh.run_check(f"rauc install {rauc_bundle_url}", timeout=120)
+    shell.run_check(f"rauc install {rauc_bundle_url}", timeout=120)
 
     # transition to barebox and check for the new build system version
     strategy.transition("barebox")
