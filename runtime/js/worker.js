@@ -62,6 +62,13 @@ const bridge = {
     post({ type: "tx", bytes: Array.from(bytes) });
   },
 
+  /** Drop the console's unread backlog; the guest is being powered on and
+   * nothing before that belongs to its new life (labgrid_wasm._wrap_power_on). */
+  discardConsole() {
+    reader.discard();
+    post({ type: "consumed" }); // the ring has room again, as after a read
+  },
+
   /** Same contract as readConsole, for the QMP monitor channel. */
   readQmp(timeoutMs, maxBytes) {
     return qmpReader.read(maxBytes, timeoutMs) || undefined;

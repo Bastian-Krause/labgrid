@@ -35,7 +35,8 @@ on() and off() as well -- seven methods rather than five. setup.sh pins the
 commit this was built against.
 
 Beyond the five methods, the only private state touched is self.qmp, which stock
-labgrid sets in the same place.
+labgrid sets in the same place -- and, at power-on, the console's pexpect buffer,
+which _wrap_power_on empties (see there for why).
 
 Import this before any user code. Nothing in the demo scripts refers to it.
 """
@@ -207,18 +208,20 @@ def _graft(holder, target):
 
 
 def _wrap_transfer_raw(cls, name):
-    """Wrap a ShellDriver file-transfer method so the console is switched to raw
-    for its whole duration and back to cooked after.
+    """Wrap a ShellDriver file-transfer method so the page treats the console as
+    raw for its whole duration and as text again after.
 
-    ShellDriver.get()/put() move files with XMODEM, a binary protocol; the page's
-    xterm-pty is a second line discipline in series with the guest's tty and
-    would corrupt the stream (see runtime/js/main.js). The stock method is left
-    exactly as labgrid wrote it -- this only brackets it with the raw toggle, in
-    a finally so cooked mode is always restored, even on ExecutionError/TIMEOUT.
-    Wrapping the private _get_bytes/_put_bytes covers get/get_bytes and
-    put/put_bytes, which all funnel through them; the ordinary _run() calls
-    inside (mktemp, which lrz, stat, dd) still work, because the guest's own tty
-    keeps cooking while the page's is transparent.
+    ShellDriver.get()/put() move files with XMODEM, a binary protocol. The page
+    renders console bytes into the xterm and keeps a text mirror of them, and
+    both would be fed the transfer's binary (ESC sequences among it); the toggle
+    switches them off for the duration (setConsoleRaw in runtime/js/main.js --
+    the pipe console itself is 8-bit clean, there is no line discipline left to
+    flip). The stock method is left exactly as labgrid wrote it -- this only
+    brackets it, in a finally so rendering is always restored, even on
+    ExecutionError/TIMEOUT. Wrapping the private _get_bytes/_put_bytes covers
+    get/get_bytes and put/put_bytes, which all funnel through them; the ordinary
+    _run() calls inside (mktemp, which lrz, stat, dd) are unaffected, as the
+    guest's own tty keeps cooking throughout.
     """
     orig = getattr(cls, name)
 
@@ -231,6 +234,36 @@ def _wrap_transfer_raw(cls, name):
             _bridge.setConsoleRaw(False)
 
     setattr(cls, name, wrapper)
+
+
+def _wrap_power_on(cls):
+    """Wrap QEMUDriver.on so the guest powers on with an empty console.
+
+    On labgrid master a QEMU power cycle is off() = QMP stop + system_reset and
+    on() = cont: the emulator and its console connection live across it, so
+    whatever the console carried before the cycle is still there to be read
+    after it. On this page that is the normal case, not a corner: the xterm is
+    the visitor's to type at, and every prompt they provoke while no driver is
+    reading sits in the console ring and in pexpect's buffer. After the cycle
+    BareboxDriver._await_prompt() takes such a stale prompt for the new boot's,
+    sends its marker check into a machine still counting down its autoboot --
+    the first keystroke stops the countdown, the rest lands as a half-quoted
+    command at barebox's continuation prompt -- and the strategy is broken for
+    the rest of the session. A new life starts with nothing left over from the
+    old one: drop the page's unread ring and pexpect's own buffer before the
+    stock on() sends cont. Only when the driver is actually off: on() on a
+    running guest is a no-op, and its console is live data.
+    """
+    orig = cls.on
+
+    @functools.wraps(orig)
+    def wrapper(self):
+        if not self.status:
+            _bridge.discardConsole()
+            self._expect.buffer = b""
+        return orig(self)
+
+    cls.on = wrapper
 
 
 #: Seconds to wait after the transfer command is launched, before the XMODEM
@@ -291,6 +324,8 @@ def bind(bridge):
     _bridge = bridge
     _graft(_QEMUDriverWasm, QEMUDriver)
     _graft(_HTTPProviderWasm, HTTPProviderDriver)
+    # on() stays stock (a QMP cont); it only gets an empty console to start with.
+    _wrap_power_on(QEMUDriver)
     # SSHDriver: unchanged until first activated, then backed by asyncssh over
     # the SSH serial channel (labgrid_wasm_ssh, imported lazily by the wrapper).
     _wrap_ssh_on_activate(SSHDriver)

@@ -96,6 +96,17 @@ export class RingReader {
   }
 
   /**
+   * Drop everything written but not yet read. READ is the reader's to move, so
+   * this is its call to make; a byte the writer lands between the two loads
+   * stays ahead of the new READ and is kept, which is right -- it is newer than
+   * the discard. Used at the guest's power-on: what the console carried before
+   * it belongs to the previous life (see labgrid_wasm._wrap_power_on).
+   */
+  discard() {
+    Atomics.store(this.ctl, READ, Atomics.load(this.ctl, WRITE));
+  }
+
+  /**
    * Block for up to timeoutMs for at least one byte.
    * Returns a Uint8Array, or null on timeout. Never returns an empty array.
    */
