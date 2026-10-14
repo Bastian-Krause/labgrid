@@ -3,17 +3,17 @@ Release 26.0.1 (Released Oct 14, 2026)
 
 Bug fixes in 26.0.1
 ~~~~~~~~~~~~~~~~~~~
-- Added new more USB IDs for the ``IMXUSBLoader`` resource extracted from uuu.
+- Added new more USB IDs for the `IMXUSBLoader` resource extracted from uuu.
 - The minimum protobuf version has been raised to 5.29.6 to mitigate a
   `DoS issue <https://github.com/labgrid-project/labgrid/security/dependabot/1>`_
   and a
   `recursion stack exhaustion <https://github.com/labgrid-project/labgrid/security/dependabot/3>`_.
-- ``ManagedFile.sync_to_resource()`` with a symlink has been fixed on local
+- `ManagedFile`'s ``sync_to_resource()`` with a symlink has been fixed on local
   resources for cases where the symlink already existed.
-  Affected TFTPProviderDriver and HTTPProviderDriver.
-- ProcessWrapper now reads until the end of a process' output even if the
+  Affected `TFTPProviderDriver` and `HTTPProviderDriver`.
+- `ProcessWrapper` now reads until the end of a process' output even if the
   process terminated.
-- SerialLoggingReporter messages ending accidentally with ``\r\n`` have been fixed.
+- `SerialLoggingReporter` messages ending accidentally with ``\r\n`` have been fixed.
 - The ``poe_netgear_plus`` power backend now imports ``py_netgear_plus``
   conditionally allowing tests without having the ``netgear`` extra installed.
 - gRPC fork handlers were disabled during tests to fix flaky fork() aborts.
@@ -21,7 +21,7 @@ Bug fixes in 26.0.1
 - Reservation scheduling has been fixed for missing allocated places.
 - Tests now serialize their access to ``pexpect.spawn`` since that's not
   thread-safe.
-- ProcessWrapper no longer appends accidental ``\n`` to the end of streamed
+- `ProcessWrapper` no longer appends accidental ``\n`` to the end of streamed
   chunks.
 - The `RawNetworkInterfaceDriver` now uses the correct ethtool argument order
   for retrieving EEE settings.
@@ -31,11 +31,11 @@ Bug fixes in 26.0.1
   (Microdia) devices.
 - `RawNetworkInterfaceDriver` and ``labgrid-client netns`` now operate without
   root privileges.
-- The `RawNetworkInterfaceDriver`` now supports iproute2 <6.0.0 for its netns
+- The `RawNetworkInterfaceDriver` now supports iproute2 <6.0.0 for its netns
   functionality.
-- ``ManagedFile.sync_to_resource()`` with a symlink now creates necessary
+- `ManagedFile`'s ``sync_to_resource()`` with a symlink now creates necessary
   directories prior to symlinking.
-  Affects TFTPProviderDriver and HTTPProviderDriver ``internal`` arguments.
+  Affects `TFTPProviderDriver`'s and `HTTPProviderDriver`'s ``internal`` arguments.
 - `NFSProvider` resources can now be exported.
 - Exporter sessions are now properly cleaned up after a cancellation.
 - `DeditecRelais8` and `HIDRelay` now execute their local agents with the same
