@@ -200,11 +200,10 @@ async function init(msg) {
   // to it rather than through micropip. micropip has to arrive this way -- it is
   // what does everything below -- and attrs and pyyaml are built as part of the
   // pyodide distribution (pyyaml is a compiled wasm32 wheel, not something pip
-  // could produce here). protobuf and exceptiongroup are for labgrid's pytest
-  // plugin, which reaches labgrid.remote: protobuf has to be genuine, because
-  // the generated coordinator stubs build their descriptors at import.
-  await pyodide.loadPackage(
-    ["micropip", "attrs", "pyyaml", "protobuf", "exceptiongroup"]);
+  // could produce here). protobuf is for labgrid's pytest plugin, which reaches
+  // labgrid.remote: it has to be genuine, because the generated coordinator
+  // stubs build their descriptors at import.
+  await pyodide.loadPackage(["micropip", "attrs", "pyyaml", "protobuf"]);
   const micropip = pyodide.pyimport("micropip");
 
   // Stage everything else the Python side fetches now, before the wheels, so
@@ -213,8 +212,8 @@ async function init(msg) {
   // small fetch issued behind them on a shared slow link waits seconds.
   //
   // grpc_stub.py lands as grpc.py: grpcio has no wasm build, and labgrid's
-  // pytest plugin imports it by way of labgrid.remote. Nothing calls into it --
-  // see the module's own comment.
+  // pytest plugin imports it by way of labgrid.remote. Nothing calls into it
+  // short of contacting a coordinator -- see the module's own comment.
   const py = new URL("../python/", import.meta.url).href;
   for (const [name, as] of [["labgrid_wasm.py", "labgrid_wasm.py"],
                             ["labgrid_wasm_ssh.py", "labgrid_wasm_ssh.py"],

@@ -467,16 +467,23 @@ def _classify_and_run(args, env):
             rc, out = _open_master(args, env)
             return _Proc(returncode=rc, stdout=out)
 
-        # keepalive: `... <address> cat`, no -l, no -p (address is positional)
-        if _val(args, "-l") is None and args and args[-1] == "cat":
+        # keepalive: `... [-l <user>] <address> cat`. The one argv without -p:
+        # every command run carries `-p <port>`, the keepalive never has. (It
+        # had no -l either until labgrid master started passing the username
+        # everywhere; a bare `cat` run as a command has that same shape, so the
+        # port, not the user, is what tells the two apart.)
+        if _val(args, "-p") is None and args and args[-1] == "cat":
             conn = _conn_for(args)
             return _Proc(keepalive_conn=conn, encoding=env.get("encoding") if env else None)
 
-        # a command run over the master: `... -l <user> <address> <cmd...>`
-        if _val(args, "-l") is not None:
-            # address is the token right after `-l <user>`; the command follows
-            li = args.index("-l")
-            cmd_tokens = args[li + 3:]
+        # a command run over the master: `... -p <port> [-l <user>] <address> <cmd...>`
+        if _val(args, "-p") is not None:
+            # the address follows `-p <port>` and, with a username, `-l <user>`;
+            # the command is everything after it
+            rest = args[args.index("-p") + 2:]
+            if rest[:1] == ["-l"]:
+                rest = rest[2:]
+            cmd_tokens = rest[1:]
             out, err, rc = _exec(args, cmd_tokens)
             return _Proc(returncode=rc, stdout=out, stderr=err)
 

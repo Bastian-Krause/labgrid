@@ -4,13 +4,14 @@
 //
 //   {"files": [{"path": "/demo/images/mini.norimg",
 //               "url": "images/mini.norimg"},
-//              {"path": "/images/mini.hdimg"}]}
+//              {"path": "/demo/images/mini.hdimg"}]}
 //
 // "path" is where the file lands in the Emscripten filesystem -- the path QEMU
-// will be told on its command line: labgrid resolves env.yaml images: keys
-// against the config's directory (/demo), while relative paths in extra_args
-// pass through verbatim and resolve against QEMU's cwd (/). "url" is where to
-// fetch it from, resolved against the manifest, defaulting to the basename.
+// will be told on its command line. labgrid resolves env.yaml images: keys
+// against the config's directory (/demo); a relative path spelled out inside
+// extra_args would instead pass through verbatim and resolve against QEMU's
+// cwd (/). "url" is where to fetch it from, resolved against the manifest,
+// defaulting to the basename.
 // A url ending in ".gz" (for a path that does not) is fetched compressed and
 // inflated while it streams -- flash and disk images squash 3-60x, and
 // counting on the server or its CDN to compress a 70 MB octet-stream on the
