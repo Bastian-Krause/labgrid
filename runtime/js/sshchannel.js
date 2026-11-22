@@ -3,18 +3,20 @@
 // labgrid's SSHDriver talks SSH to the guest; the browser has no TCP path into
 // the guest, so SSH rides a virtio-serial port instead. This is built exactly
 // like the QMP channel (qmpchannel.js): two Emscripten character devices made
-// from Module.preRun back QEMU's `pipe` chardev, so no rebuild is needed and
-// prebuilt QEMU-WASM artifacts stay usable. The difference from QMP is only at
-// the ends: the QEMU side attaches the chardev to a virtio-serial port (the
-// guest's lgssh gateway bridges that port to a dropbear), and the host side
-// carries an opaque binary SSH stream rather than line-oriented JSON -- so there
-// is no newline flush; bytes are batched per write burst and handed to the ring.
+// from Module.preRun back QEMU's `pipe` chardev, so no rebuild is needed. The
+// difference from QMP is only at the ends: the QEMU side attaches the chardev
+// to a virtio-serial port (the guest's lgssh gateway bridges that port to a
+// dropbear), and the host side carries an opaque binary SSH stream rather than
+// line-oriented JSON -- so there is no newline flush; bytes are batched per
+// write burst and handed to the ring.
 //
 // Direction, as for QMP: QEMU reads <path>.in (host -> guest, the toQemu queue)
 // and writes <path>.out (guest -> host, the fromQemu queue). char-pipe opens
 // both O_RDWR, so both devices carry both callbacks (a read-only .in would fail
 // to open). An input callback returning undefined is EAGAIN (nothing to read
 // now); returning null would be EOF and would close the port.
+
+import { wake, POLLIN, POLLOUT } from "./pollwake.js";
 
 export function createSshChannel(Module, path = "/dev/lgssh", onBytes = null, counters = null) {
   const nodes = {};
@@ -57,7 +59,7 @@ export function createSshChannel(Module, path = "/dev/lgssh", onBytes = null, co
      * so QEMU's virtio-serial loop busy-spins on EAGAIN reads. Call after the
      * module is initialized (FS.registerDevice has run in preRun, and open
      * streams share the stream_ops object, so patching it reaches QEMU's
-     * already-open fds).
+     * already-open fds). send() wakes a thread sleeping in poll (pollwake.js).
      */
     attachPolls: (Module) => {
       const FS = Module.FS;
@@ -65,8 +67,8 @@ export function createSshChannel(Module, path = "/dev/lgssh", onBytes = null, co
       const devIn = FS.devices[nodes.in.rdev];
       const devOut = FS.devices[nodes.out.rdev];
       if (!devIn || !devOut) return false;
-      devIn.stream_ops.poll = () => (toQemu.length ? 1 /* POLLIN */ : 0);
-      devOut.stream_ops.poll = () => 4 /* POLLOUT */;
+      devIn.stream_ops.poll = () => (toQemu.length ? POLLIN : 0);
+      devOut.stream_ops.poll = () => POLLOUT;
       return true;
     },
     toQemu,
@@ -74,6 +76,7 @@ export function createSshChannel(Module, path = "/dev/lgssh", onBytes = null, co
     /** Queue bytes (an array of byte values, or a Uint8Array) for QEMU to read. */
     send: (data) => {
       for (const b of data) toQemu.push(b);
+      if (data.length) wake(nodes.in, POLLIN);
     },
     /** The QEMU arguments attaching this channel to a named virtio-serial port.
      * The guest sees it as /dev/vportNpM named "lgssh"; the lgssh gateway finds

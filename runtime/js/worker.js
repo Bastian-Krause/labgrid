@@ -101,13 +101,12 @@ const bridge = {
   },
 
   /**
-   * Put the console line discipline into raw mode (on=true) or back to cooked.
-   * ShellDriver.get()/put() drive XMODEM, a binary protocol, over the console;
-   * the page's xterm-pty is a second line discipline in series with the guest's
-   * own tty, and its cooked default would corrupt the byte stream. labgrid flips
-   * it raw for the duration of a transfer and cooked again after (labgrid_wasm
-   * wraps _get_bytes/_put_bytes). Fire-and-forget: it is a postMessage, ordered
-   * ahead of the writeConsole/tx postMessages that follow it.
+   * Mark the console raw (on=true) or text again. ShellDriver.get()/put()
+   * drive XMODEM, a binary protocol, over the console; the page keeps a
+   * transfer's bytes out of the terminal and its text mirror for the duration
+   * (labgrid_wasm wraps _get_bytes/_put_bytes). The console itself is 8-bit
+   * clean either way. Fire-and-forget: it is a postMessage, ordered ahead of
+   * the writeConsole/tx postMessages that follow it.
    */
   setConsoleRaw(on) {
     post({ type: "set-raw", on: !!on });

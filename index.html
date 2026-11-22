@@ -234,9 +234,10 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
         <a href="https://github.com/containers/gvisor-tap-vsock">gvisor-tap-vsock</a> TCP/IP stack
         (WASI) that does the guest's HTTP(S) through the browser's Fetch API and MITMs TLS with its
         own CA. The bridge itself is ktock's, from the same qemu-wasm project.</li>
-      <li><a href="https://xtermjs.org/">xterm.js</a> and
-        <a href="https://github.com/mame/xterm-pty">xterm-pty</a> are the terminal. The bridge taps the
-        pty master &mdash; where a human sits, and labgrid is just a second human.</li>
+      <li><a href="https://xtermjs.org/">xterm.js</a> is the terminal. The serial console is a pipe
+        chardev backed by the page's own Emscripten device: what the guest writes goes to the
+        terminal and to labgrid, and keystrokes and labgrid's commands go back the same way &mdash;
+        labgrid is just a second human at the console.</li>
       <li>The <code>SSHDriver</code> works without a network:
         <a href="https://asyncssh.readthedocs.io/">asyncssh</a> runs in the same worker as labgrid and
         carries its <code>ssh</code>/<code>scp</code> over a dedicated virtio-serial channel (a third
@@ -273,7 +274,6 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
 <script src="./coi-serviceworker.js"></script>
 
 <script src="./vendor/xterm/xterm.js"></script>
-<script src="./vendor/xterm/xterm-pty.js"></script>
 
 <!-- The editor. CodeFlask bundles Prism and publishes it as window.Prism, but
      only with markup/css/clike/js -- so python and yaml come from Prism's own

@@ -1,22 +1,24 @@
 // A scripted stand-in for QEMU, for the fast test tier.
 //
-// Booting the real guest takes two and a half minutes and varies by a lot, so
+// Booting the real guest takes a quarter of a minute and varies by a lot, so
 // everything between labgrid and QEMU -- the SharedArrayBuffer rings, _read's
 // timeout, the byte marshalling across the Pyodide boundary, QMPMonitor's line
 // buffering -- can only be regression-tested at that price. This replaces the
-// *guest*, and nothing else: the fake sits on the xterm-pty slave, exactly where
-// QEMU's Emscripten TTY sits, so the console tap, the ring and the whole labgrid
-// stack above them are the production ones.
+// *guest*, and nothing else: the fake hands its bytes to the same console entry
+// point the pipe chardev's device does (main.js, onPipeConsoleBytes) and takes
+// its input from the same send() the device would, so the console tap, the
+// ring, the flow control and the whole labgrid stack above them are the
+// production ones.
 //
 // Be clear about what that does and does not prove. It exercises labgrid's
 // login state machine, its marker protocol, pexpect's regex machinery, VT100
 // stripping, exit-code parsing, and every line of our bridge. It proves nothing
-// about QEMU-WASM -- not the argv, not the guest-file fetching, not the poll
-// patch. That is what m4 and m5 are for, and this does not replace them.
+// about QEMU-WASM -- not the argv, not the guest-file fetching, not the device
+// polls. That is what m4 and m5 are for, and this does not replace them.
 //
 // One gap worth naming rather than glossing: this guest's recorded boot log is
-// under 5 KB, so it never reaches the 64 KB low-water mark where main.js starts
-// deferring the flow-control ack. The backpressure path is real code that this
+// under 5 KB, so it never reaches the 64 KB low-water mark where the console
+// device starts refusing writes. The backpressure path is real code that this
 // tier does not reach.
 //
 // The boot log is recorded from a real run by tests/record-fixture.mjs, so the
@@ -144,12 +146,15 @@ function sh(cmd, fixture) {
 }
 
 /**
- * Play a recorded boot log into the pty and then answer as a shell.
+ * Play a recorded boot log into the console and then answer as a shell.
  *
- * Returns the power hooks the QMP side calls, so that cont/stop/system_reset
- * really start, silence and restart the guest.
+ * `io.emit(bytes)` is where the console device would hand QEMU's output to
+ * the page, and `io.room()` how much it would accept right now. Returns the
+ * power hooks the QMP side calls (cont/stop/system_reset really start, silence
+ * and restart the guest), plus send() for what is typed at it and
+ * notifyRoom() for when labgrid has drained the ring.
  */
-export function startFakeConsole(slave, fixture) {
+export function startFakeConsole(io, fixture) {
   const boot = enc(fixture.boot);
   const CHUNK = 4096;
 
@@ -161,40 +166,44 @@ export function startFakeConsole(slave, fixture) {
   const say = (text) => queue.push(...enc(text));
   const prompt = () => say("\r\n" + fixture.prompt);
 
-  // Write only while xterm-pty will take it: the master side holds back its ack
-  // until labgrid has drained the ring, and a guest that ignores that would be
-  // a guest QEMU is not. (This log is too small to actually trigger it -- see
-  // the gap noted at the top.)
+  // Write only what the console would take: the device refuses bytes once the
+  // ring is near full, until labgrid has drained it, and a guest that ignored
+  // that would be a guest QEMU is not. (This log is too small to actually
+  // trigger it -- see the gap noted at the top.)
   function pump() {
-    while (queue.length && slave.writable) {
-      slave.write(queue.splice(0, CHUNK));
-    }
-    if (booting && !queue.length && slave.writable) {
-      if (bootAt < boot.length) {
-        queue.push(...boot.slice(bootAt, bootAt + CHUNK));
-        bootAt += CHUNK;
-        setTimeout(pump, 0); // yield, so the reader gets a turn
-      } else {
-        booting = false;
+    for (;;) {
+      const room = Math.min(io.room(), CHUNK);
+      if (room <= 0) return;
+      if (queue.length) {
+        io.emit(Uint8Array.from(queue.splice(0, room)));
+        continue;
       }
+      if (booting) {
+        if (bootAt < boot.length) {
+          queue.push(...boot.slice(bootAt, bootAt + CHUNK));
+          bootAt += CHUNK;
+          setTimeout(pump, 0); // yield, so the reader gets a turn
+        } else {
+          booting = false;
+        }
+      }
+      return;
     }
   }
-  slave.onWritable(pump);
 
   // A byte stream, not a line stream: a write can split a line anywhere, so
   // hold the remainder rather than treating the tail of a chunk as a line.
   let input = "";
-  slave.onReadable(() => {
-    const data = slave.read();
-    if (!data || !data.length) return;
-    input += String.fromCharCode(...data);
+  function receive(data) {
+    const text = typeof data === "string" ? data : String.fromCharCode(...data);
+    input += text;
     for (let nl = input.indexOf("\n"); nl >= 0; nl = input.indexOf("\n")) {
       const line = input.slice(0, nl).replace(/\r$/, "");
       input = input.slice(nl + 1);
       handle(line);
     }
     pump();
-  });
+  }
 
   function handle(line) {
     if (!loggedIn) {
@@ -246,6 +255,8 @@ export function startFakeConsole(slave, fixture) {
   return {
     started: false,
     running: false,
+    send: receive,
+    notifyRoom: pump,
     cont() {
       this.started = this.running = true;
       if (bootAt === 0) booting = true;

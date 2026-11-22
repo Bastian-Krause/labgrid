@@ -1,21 +1,18 @@
 // A second bidirectional byte channel into QEMU-WASM, for QMP.
 //
 // labgrid's stock on()/off()/cycle()/monitor_command() all go through QMP, and
-// QEMU only gets one ready-made stream in the browser: the Emscripten TTY, which
-// the serial console already owns. Emscripten has no AF_UNIX and no usable
-// sockets without a relay, so the second channel is built out of two custom
-// Emscripten character devices created from Module.preRun -- which needs no
-// rebuild, so prebuilt upstream QEMU-WASM artifacts stay usable.
+// Emscripten has no AF_UNIX and no usable sockets without a relay, so the
+// monitor's channel is built out of two custom Emscripten character devices
+// created from Module.preRun -- which needs no rebuild.
 //
 // QEMU's `pipe` chardev opens <path>.in for reading and <path>.out for writing,
 // with no termios involved, which makes it the natural fit for a pair of plain
 // character devices.
 //
-// Two details the upstream build forces on us:
+// Two details of FS_createDevice to keep in mind:
 //
-//   * Module.FS is not exported, only the FS_* helpers are. FS_createDevice is
-//     enough: its (input, output) callbacks are byte-at-a-time, which is fine
-//     for a line-oriented JSON monitor.
+//   * its (input, output) callbacks are byte-at-a-time, which is fine for a
+//     line-oriented JSON monitor;
 //   * char-pipe opens both ends O_RDWR, so both devices must be created with
 //     *both* callbacks -- FS_createDevice derives the file mode from which
 //     callbacks are present, and a read-only .in would fail to open.
@@ -23,6 +20,8 @@
 // An input callback returning undefined becomes EAGAIN, which is exactly what a
 // non-blocking pipe with nothing in it should do. Returning null would mean EOF,
 // and QEMU would treat the monitor as closed.
+
+import { wake, POLLIN, POLLOUT } from "./pollwake.js";
 
 export function createQmpChannel(Module, path = "/dev/lgqmp", onByte = null, counters = null) {
   const nodes = {};
@@ -64,8 +63,8 @@ export function createQmpChannel(Module, path = "/dev/lgqmp", onByte = null, cou
      * Give the two devices honest poll semantics. Emscripten's default for a
      * device without stream_ops.poll is DEFAULT_POLLMASK -- always readable and
      * writable -- which makes the QMP iothread's g_poll return instantly forever
-     * and busy-spin dispatching reads that yield EAGAIN. Combined with the
-     * patched poll wrapper (see build_qemu_wasm/patches/), an idle monitor now sleeps.
+     * and busy-spin dispatching reads that yield EAGAIN. With a truthful poll,
+     * and the wake-up send() gives (pollwake.js), an idle monitor sleeps.
      *
      * Call after the module is initialized: FS.registerDevice has run by then
      * (preRun), and open streams share the same stream_ops object, so patching
@@ -77,8 +76,8 @@ export function createQmpChannel(Module, path = "/dev/lgqmp", onByte = null, cou
       const devIn = FS.devices[nodes.in.rdev];
       const devOut = FS.devices[nodes.out.rdev];
       if (!devIn || !devOut) return false;
-      devIn.stream_ops.poll = () => (toQemu.length ? 1 /* POLLIN */ : 0);
-      devOut.stream_ops.poll = () => 4 /* POLLOUT */;
+      devIn.stream_ops.poll = () => (toQemu.length ? POLLIN : 0);
+      devOut.stream_ops.poll = () => POLLOUT;
       return true;
     },
     toQemu,
@@ -89,6 +88,7 @@ export function createQmpChannel(Module, path = "/dev/lgqmp", onByte = null, cou
     send: (data) => {
       const bytes = typeof data === "string" ? new TextEncoder().encode(data) : data;
       for (const b of bytes) toQemu.push(b);
+      if (bytes.length) wake(nodes.in, POLLIN);
     },
     /** The QEMU arguments that attach this channel to the QMP monitor. */
     args: () => ["-chardev", `pipe,id=qmp,path=${path}`, "-qmp", "chardev:qmp"],
