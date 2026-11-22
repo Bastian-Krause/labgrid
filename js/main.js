@@ -224,9 +224,9 @@ async function prepareGuest() {
     guest.done = true;
     return;
   }
-  const manifest = await fetchGuestManifest(QEMU_BASE);
+  const manifest = await fetchGuestManifest(GUEST_BASE);
   guest.mode = "manifest";
-  guest.files = await fetchGuestFiles(Module, QEMU_BASE, manifest, (path, got, total) => {
+  guest.files = await fetchGuestFiles(Module, GUEST_BASE, manifest, (path, got, total) => {
     guest.progress = { path, got, total };
   });
   guest.progress = null;
@@ -701,7 +701,7 @@ state.editors = initEditors({
 // Tell the worker where to fetch the RAUC bundle from so it can put it in
 // Pyodide's filesystem at the path env.yaml's `images: rauc_bundle` resolves to
 // -- that is the file HTTPProviderDriver.stage() reads and streams back to the
-// guest. It rides next to the guest images (QEMU_BASE, from index.html); the
+// guest. It rides next to the guest images (GUEST_BASE, from index.html); the
 // replay tier has no guest to stream to, so it is skipped there.
-const raucBundleUrl = REPLAY ? null : QEMU_BASE + "images/rauc/demo.raucb";
+const raucBundleUrl = REPLAY ? null : GUEST_BASE + "rauc/demo.raucb";
 worker.postMessage({ type: "init", ring, qmpRing, sshRing, note, qemuVersion: QEMU_VERSION, raucBundleUrl });

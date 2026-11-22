@@ -20,7 +20,7 @@ checkout. This module does three things, all from outside the package:
    stage() rsyncs the file into an HTTP docroot on the provider's host; there is
    no host and no rsync here, so it instead hands the bytes to the page, which
    serves them to the guest over the in-browser proxy at the provider's external
-   URL (see runtime/js/browsernet.js). get_export_vars() and the resource stay
+   URL (see static/js/browsernet.js). get_export_vars() and the resource stay
    stock, so the URL the guest streams from is the one the YAML declares.
 
 The replacements live in the _QEMUDriverWasm and _HTTPProviderWasm holder
@@ -31,7 +31,7 @@ classes with _graft() and wires up the JS bridge they close over.
 This is written against labgrid master, where on_activate() starts the QEMU
 process and opens the QMP monitor, leaving on() as nothing but "cont". In the
 26.0 release the process start lives in on() instead, which would mean grafting
-on() and off() as well -- seven methods rather than five. setup.sh pins the
+on() and off() as well -- seven methods rather than five. dep-building/labgrid pins the
 commit this was built against.
 
 Beyond the five methods, the only private state touched is self.qmp, which stock
@@ -150,7 +150,7 @@ class _QEMUDriverWasm:
             raise QemuWasmError(str(error))
 
         # Stock builds this over the child's stdio pipes; here it runs over a
-        # second Emscripten character device (see runtime/js/qmpchannel.js). Either way
+        # second Emscripten character device (see static/js/qmpchannel.js). Either way
         # it is real QMP against real QEMU.
         self.qmp = QMPMonitor(_QmpReader(_bridge), _QmpWriter(_bridge, to_js))
 
@@ -214,7 +214,7 @@ def _wrap_transfer_raw(cls, name):
     ShellDriver.get()/put() move files with XMODEM, a binary protocol. The page
     renders console bytes into the xterm and keeps a text mirror of them, and
     both would be fed the transfer's binary (ESC sequences among it); the toggle
-    switches them off for the duration (setConsoleRaw in runtime/js/main.js --
+    switches them off for the duration (setConsoleRaw in static/js/main.js --
     the pipe console itself is 8-bit clean, there is no line discipline left to
     flip). The stock method is left exactly as labgrid wrote it -- this only
     brackets it, in a finally so rendering is always restored, even on

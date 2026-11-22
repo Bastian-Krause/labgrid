@@ -13,7 +13,7 @@ bootloader slot — is wired in the browser and covered by
 the demo's own pytest suite (`tests/m8-pytest.mjs`): the in-browser network
 stack gives the guest connectivity, and the demo streams *this* bundle from labgrid's
 own HTTP provider, faked to serve it over that stack (see
-`demo/env.yaml`'s `HTTPProvider` and `runtime/js/browsernet.js`). It is also
+`labgrid-project/env.yaml`'s `HTTPProvider` and `static/js/browsernet.js`). It is also
 verified natively under `qemu-system-arm`.
 
 The page fetches this file at boot and `HTTPProviderDriver.stage()` serves it

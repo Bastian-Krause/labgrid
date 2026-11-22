@@ -26,7 +26,7 @@ a browser regardless. Dunders are not served: the import system probes
 have it treat this module as one.
 
 Kept as grpc_stub.py in the tree and written out as grpc.py: a tracked
-runtime/python/grpc.py would shadow the real grpc for anything run out of this
+python-adapters/grpc.py would shadow the real grpc for anything run out of this
 directory, gen_shims.py included.
 """
 

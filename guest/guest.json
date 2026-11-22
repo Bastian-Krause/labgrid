@@ -2,11 +2,11 @@
   "files": [
     {
       "path": "/demo/images/mini.norimg",
-      "url": "images/mini.norimg.gz"
+      "url": "mini.norimg.gz"
     },
     {
       "path": "/demo/images/mini.hdimg",
-      "url": "images/mini.hdimg.gz"
+      "url": "mini.hdimg.gz"
     }
   ]
 }

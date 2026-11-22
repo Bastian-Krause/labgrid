@@ -3,7 +3,7 @@
 // A guest is a plain JSON manifest sitting next to the QEMU binary:
 //
 //   {"files": [{"path": "/demo/images/mini.norimg",
-//               "url": "images/mini.norimg"},
+//               "url": "mini.norimg.gz"},
 //              {"path": "/demo/images/mini.hdimg"}]}
 //
 // "path" is where the file lands in the Emscripten filesystem -- the path QEMU
@@ -16,7 +16,7 @@
 // inflated while it streams -- flash and disk images squash 3-60x, and
 // counting on the server or its CDN to compress a 70 MB octet-stream on the
 // fly is a losing bet (edge CDNs cap on-the-fly compression well below these
-// sizes). setup.sh produces the .gz files; decompression is ~2 s and overlaps
+// sizes). The images are tracked gzipped (static/guest); decompression is ~2 s and overlaps
 // the transfer. Adding a guest is dropping files on a static server and
 // editing this list. (Upstream qemu-wasm instead ships guests as emcc
 // file_packager blobs, which only emsdk can produce; the loader for those

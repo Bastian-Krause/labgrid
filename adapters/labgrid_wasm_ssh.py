@@ -7,7 +7,7 @@ installs a subprocess *look-alike* as ``labgrid.driver.sshdriver.subprocess``
 (only SSHDriver's module sees it -- the process-wide Popen guard in worker.js
 stays for everyone else) that **interprets the exact ssh/scp argv SSHDriver
 builds** and executes it over asyncssh, which rides a virtio-serial channel to a
-dropbear in the guest (see runtime/js/sshchannel.js and the guest's
+dropbear in the guest (see static/js/sshchannel.js and the guest's
 lgssh-gateway). Every line of sshdriver.py then runs exactly as upstream wrote
 it, so the API, the log messages ("Connected to ...", "Sending command: [...]",
 "Socket already closed"), the ExecutionError texts, the retry cadence and the

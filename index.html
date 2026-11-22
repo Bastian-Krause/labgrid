@@ -279,28 +279,30 @@ pytest.main(['-v'])            <span class="c"># -vv adds the step log</span></c
      only with markup/css/clike/js -- so python and yaml come from Prism's own
      component files, loaded *after* it. They assign into that same global, which
      is CodeFlask's own Prism, so the grammars are simply there to be used. -->
-<script src="./vendor/codeflask/codeflask.min.js"></script>
-<script src="./vendor/codeflask/prism-python.min.js"></script>
-<script src="./vendor/codeflask/prism-yaml.min.js"></script>
-<script src="./vendor/codeflask/prism-ini.min.js"></script>
+<script src="./vendor/editor/codeflask.min.js"></script>
+<script src="./vendor/editor/prism-python.min.js"></script>
+<script src="./vendor/editor/prism-yaml.min.js"></script>
+<script src="./vendor/editor/prism-ini.min.js"></script>
 
 <!-- The Emscripten module object has to exist as a global before anything
      touches it, and both paths must be absolute: the pthread workers resolve
      them relative to their own URL, so a relative path silently doubles the
      directory and every worker dies fetching it. Module.arguments is filled in
      later, from labgrid's own get_qemu_base_args(), and the guest files are
-     fetched by runtime/js/guestfs.js from the image's guest.json manifest. -->
+     fetched by js/guestfs.js from guest/guest.json. -->
 <script>
-  // The one QEMU build, carrying the four upstream fixes (see build_qemu_wasm/).
-  // ?qemuimg=<name> selects a different directory under qemu/.
+  // The one QEMU build, with the two upstream fixes (see dep-building/qemu-wasm/).
+  // ?qemuimg=<name> selects a different directory under qemu/; the guest
+  // (images + guest.json) is served from guest/ regardless.
   var QEMU_IMAGE = new URLSearchParams(location.search).get("qemuimg") || "vexpress";
   var QEMU_BASE = new URL("./qemu/" + QEMU_IMAGE + "/", location.href).href;
+  var GUEST_BASE = new URL("./guest/", location.href).href;
   var Module = {
     locateFile: function (path) { return QEMU_BASE + path; },
     mainScriptUrlOrBlob: QEMU_BASE + "out.js",
   };
 </script>
 
-<script type="module" src="./runtime/js/main.js"></script>
+<script type="module" src="./js/main.js"></script>
 </body>
 </html>

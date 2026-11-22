@@ -116,9 +116,9 @@ function loadScript(src) {
  * called before the QEMU module is initialised.
  */
 export async function startBrowserNet(Module) {
-  // Resolve the vendored stack next to this module (runtime/js/), so it works
+  // Resolve the vendored stack relative to this module (js/), so it works
   // whatever base path the site is served under (e.g. gh-pages /labgrid/).
-  const net = (f) => new URL("../../vendor/net/" + f, import.meta.url).href;
+  const net = (f) => new URL("../vendor/net/" + f, import.meta.url).href;
   await loadScript(net("stack.js")); // defines window.Stack
   Module.websocket = { url: STACK_ADDR };
   Module.preRun = Module.preRun || [];

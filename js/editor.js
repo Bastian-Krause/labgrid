@@ -8,7 +8,7 @@
 // rule easy to state: what is on disk is what the editor showed when you last
 // switched away.
 
-const DEMO = new URL("../../demo/", import.meta.url).href;
+const DEMO = new URL("../labgrid-project/", import.meta.url).href;
 
 const FILES = {
   yaml: { url: DEMO + "env.yaml", path: "/demo/env.yaml", language: "yaml", readonly: true },

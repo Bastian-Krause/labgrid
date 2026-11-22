@@ -5,7 +5,7 @@
 // is a worker and not the main thread.
 
 import { RingReader, getNote, setNote, IDLE, RUNNING, STOPPED, SEQ } from "./ringbuffer.js";
-import { loadPyodide } from "../../vendor/pyodide/pyodide.mjs";
+import { loadPyodide } from "../vendor/pyodide/pyodide.mjs";
 
 let pyodide = null;
 let reader = null;
@@ -135,12 +135,12 @@ function waitForState(timeoutMs) {
 // filesystem. It has to be a real path, not a notional one: labgrid resolves
 // imports: against the directory of the config file (Config.resolve_path) and
 // then loads them by that exact path (Environment.__attrs_post_init__ ->
-// SourceFileLoader), so the demo/ directory on the server is mirrored here.
+// SourceFileLoader), so the labgrid-project/ directory on the server is mirrored here.
 const DEMO_DIR = "/demo";
 
 async function fetchDemoFile(base, name) {
   const res = await fetch(base + name);
-  if (!res.ok) throw new Error(`demo/${name}: HTTP ${res.status}`);
+  if (!res.ok) throw new Error(`labgrid-project/${name}: HTTP ${res.status}`);
   const path = DEMO_DIR + "/" + name;
   const slash = path.lastIndexOf("/");
   if (slash > DEMO_DIR.length) pyodide.FS.mkdirTree(path.slice(0, slash));
@@ -166,7 +166,7 @@ json.dumps([p for p in Config("${DEMO_DIR}/env.yaml").get_imports() if p.endswit
   );
   for (const path of paths) {
     if (!path.startsWith(DEMO_DIR + "/")) {
-      // Anything outside demo/ has no URL to be fetched from. Non-.py entries
+      // Anything outside labgrid-project/ has no URL to be fetched from. Non-.py entries
       // are plain module names and were filtered out above, so this is a path
       // that escaped the config directory -- let labgrid report it itself.
       post({ type: "stderr", line: `imports: ${path} is outside ${DEMO_DIR}/, not fetched` });
@@ -190,7 +190,7 @@ async function init(msg) {
 
   status("loading pyodide");
   pyodide = await loadPyodide({
-    indexURL: new URL("../../vendor/pyodide/", import.meta.url).href,
+    indexURL: new URL("../vendor/pyodide/", import.meta.url).href,
     stdout: (line) => post({ type: "stdout", line }),
     stderr: (line) => post({ type: "stderr", line }),
   });
@@ -214,7 +214,7 @@ async function init(msg) {
   // grpc_stub.py lands as grpc.py: grpcio has no wasm build, and labgrid's
   // pytest plugin imports it by way of labgrid.remote. Nothing calls into it
   // short of contacting a coordinator -- see the module's own comment.
-  const py = new URL("../python/", import.meta.url).href;
+  const py = new URL("../adapters/", import.meta.url).href;
   for (const [name, as] of [["labgrid_wasm.py", "labgrid_wasm.py"],
                             ["labgrid_wasm_ssh.py", "labgrid_wasm_ssh.py"],
                             ["grpc_stub.py", "grpc.py"]]) {
@@ -222,9 +222,9 @@ async function init(msg) {
     pyodide.FS.writeFile("/lib/python3.14/site-packages/" + as, src);
   }
   // the shims are plain files too; put them where labgrid_wasm expects them.
-  // They come from build/, not from runtime/python/, because setup.sh generates
+  // They come from build/site/shims, not from python-adapters/, because make generates
   // them from the host's own libc on every run.
-  const shims = new URL("../../shims/", import.meta.url).href;
+  const shims = new URL("../shims/", import.meta.url).href;
   pyodide.FS.mkdirTree("/lib/python3.14/site-packages/shims");
   for (const name of ["termios.py", "fcntl.py", "resource.py"]) {
     const src = await (await fetch(shims + name)).text();
@@ -232,7 +232,7 @@ async function init(msg) {
   }
 
   // fetch the demo's environment and script where labgrid expects them
-  const demo = new URL("../../demo/", import.meta.url).href;
+  const demo = new URL("../labgrid-project/", import.meta.url).href;
   pyodide.FS.mkdirTree(DEMO_DIR);
   // conftest.py, pytest.ini and test_demo.py are the pytest half of the demo;
   // see the PYTEST_DISABLE_PLUGIN_AUTOLOAD note below. The suite is a single
@@ -262,7 +262,7 @@ async function init(msg) {
 
   status("installing labgrid and pytest");
   // labgrid with its whole dependency closure, plus pytest for the human at
-  // the REPL, all from this tree. setup.sh let pip resolve the closures and
+  // the REPL, all from this tree. dep-building/labgrid let pip resolve the closures and
   // listed them in index.txt (names, not versions: the labgrid wheel's carries
   // whatever setuptools_scm derived from the pinned commit). The page
   // therefore fetches nothing from anywhere but its own host.
@@ -279,7 +279,7 @@ async function init(msg) {
   //
   // callKwargs, not a trailing object: a plain object would bind to micropip's
   // next positional parameter (keep_going) and deps would silently stay True.
-  const wheels = new URL("../../vendor/wheels/", import.meta.url).href;
+  const wheels = new URL("../vendor/wheels/", import.meta.url).href;
   const wheelNames = (await (await fetch(wheels + "index.txt")).text()).trim().split("\n");
   await micropip.install.callKwargs(wheelNames.map((name) => wheels + name), { deps: false });
   // Everything the Python side downloads is in (interpreter, stdlib, packages,
@@ -399,10 +399,10 @@ f"{sys.version.split()[0]}|{__dist_version('labgrid')}"
   // before the wheels are in. cryptography (with cffi/pycparser/six) comes from
   // the pyodide lock via loadPackage; asyncssh is a pure-python wheel installed
   // by micropip from vendor/asyncssh/ -- its own index.txt, as vendor/wheels/
-  // has, so setup.sh's pin is the one place the version lives, and a directory
+  // has, so dep-building/asyncssh's pin is the one place the version lives, and a directory
   // of its own so boot does not install it. The larger `import asyncssh` cost
   // stays deferred to on_activate itself.
-  const sshWheels = new URL("../../vendor/asyncssh/", import.meta.url).href;
+  const sshWheels = new URL("../vendor/asyncssh/", import.meta.url).href;
   sshBackendReady = (async () => {
     await pyodide.loadPackage(["cryptography", "typing-extensions"]);
     const names = (await (await fetch(sshWheels + "index.txt")).text()).trim().split("\n");
