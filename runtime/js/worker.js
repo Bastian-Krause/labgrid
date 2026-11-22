@@ -208,8 +208,9 @@ async function init(msg) {
 
   // Stage everything else the Python side fetches now, before the wheels, so
   // that once the wheels are in nothing but CPU stands between here and
-  // "ready" -- the page starts QEMU's 27 MB of downloads at that point, and a
-  // small fetch issued behind them on a shared slow link waits seconds.
+  // "ready" -- the page starts QEMU's own downloads (several MB) at that
+  // point, and a small fetch issued behind them on a shared slow link waits
+  // seconds.
   //
   // grpc_stub.py lands as grpc.py: grpcio has no wasm build, and labgrid's
   // pytest plugin imports it by way of labgrid.remote. Nothing calls into it
@@ -285,7 +286,7 @@ async function init(msg) {
   // Everything the Python side downloads is in (interpreter, stdlib, packages,
   // wheels); what is left before "ready" is CPU and a few KB of demo files. The
   // page starts QEMU's own downloads here, behind them rather than alongside:
-  // on a shared slow link the 27 MB of QEMU and network stack would otherwise
+  // on a shared slow link the QEMU binary and the network stack would otherwise
   // starve the wheels and push "ready" out by seconds (main.js, prepareQemu).
   post({ type: "downloads-done" });
 
